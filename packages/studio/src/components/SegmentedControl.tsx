@@ -77,6 +77,7 @@ export const SegmentedControl: React.FC<{
 
 		return {
 			...container,
+			maxWidth: '100%',
 		};
 	}, [needsWrapping]);
 

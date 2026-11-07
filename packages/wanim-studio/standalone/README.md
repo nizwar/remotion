@@ -8,12 +8,12 @@ Create animations and export them as `.wanim` files. Requires Node.js 20 or newe
 npm install
 ```
 
-The first export downloads a headless Chrome.
+The first render downloads a headless Chrome.
 
 ## Commands
 
 ```bash
-npm run dev                  # Preview in Remotion Studio, then open the printed link
+npm run dev                  # Open Remotion Studio
 npm run list                 # List all animations
 npm run export LoadingOrb    # Create out/LoadingOrb.wanim
 ```
@@ -23,6 +23,8 @@ To reduce the size, pass flags after `--`:
 ```bash
 npm run export LoadingOrb -- --scale=0.5 --every-nth-frame=2
 ```
+
+To export from the Studio, click Render and choose the Wanim tab.
 
 ## Adding an animation
 
