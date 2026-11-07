@@ -303,7 +303,13 @@ const RenderModal: React.FC<
 			renderType: renderTypeOfLastRender ?? (isVideo ? 'video' : 'still'),
 		});
 		if (retrySettings === null) {
-			return codecs;
+			return {
+				...codecs,
+				initialRenderType:
+					isVideo && !readOnlyStudio
+						? ('wanim' as const)
+						: codecs.initialRenderType,
+			};
 		}
 
 		return {
@@ -358,14 +364,16 @@ const RenderModal: React.FC<
 		return getDefaultOutLocation({
 			compositionName: resolvedComposition.id,
 			defaultExtension:
-				initialRenderType === 'still'
-					? initialStillImageFormat
-					: isVideo
-						? BrowserSafeApis.getFileExtensionFromCodec(
-								initialVideoCodec,
-								initialAudioCodec,
-							)
-						: initialStillImageFormat,
+				initialRenderType === 'wanim'
+					? 'wanim'
+					: initialRenderType === 'still'
+						? initialStillImageFormat
+						: isVideo
+							? BrowserSafeApis.getFileExtensionFromCodec(
+									initialVideoCodec,
+									initialAudioCodec,
+								)
+							: initialStillImageFormat,
 			type: 'asset',
 			compositionDefaultOutName: resolvedComposition.defaultOutName,
 			outputLocation: renderDefaults.outputLocation,
@@ -1284,6 +1292,19 @@ const RenderModal: React.FC<
 		}
 
 		return [
+			// The read-only Studio prints a command for the published CLI instead
+			...(readOnlyStudio
+				? []
+				: [
+						{
+							label: 'Wanim',
+							onClick: () => {
+								setRenderMode('wanim');
+							},
+							key: 'wanim',
+							selected: renderMode === 'wanim',
+						},
+					]),
 			{
 				label: 'Still',
 				onClick: () => {
@@ -1316,19 +1337,6 @@ const RenderModal: React.FC<
 				key: 'sequence',
 				selected: renderMode === 'sequence',
 			},
-			// The read-only Studio prints a command for the published CLI instead
-			...(readOnlyStudio
-				? []
-				: [
-						{
-							label: 'Wanim',
-							onClick: () => {
-								setRenderMode('wanim');
-							},
-							key: 'wanim',
-							selected: renderMode === 'wanim',
-						},
-					]),
 		];
 	}, [
 		resolvedComposition?.durationInFrames,
