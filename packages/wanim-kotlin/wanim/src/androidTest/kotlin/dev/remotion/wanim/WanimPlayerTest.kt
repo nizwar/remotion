@@ -49,6 +49,7 @@ class WanimPlayerTest {
         rule.runOnIdle { playing = false }
         rule.waitForIdle()
         rule.runOnIdle { playing = true }
+        rule.waitForIdle()
         waitUntil("finished again") { finished.get() == 2 }
     }
 
@@ -63,6 +64,7 @@ class WanimPlayerTest {
         }
         waitUntil("first ready", 10_000) { ready.get() == 1 }
         rule.runOnIdle { animation = second }
+        rule.waitForIdle()
         waitUntil("second ready", 10_000) { ready.get() == 2 }
     }
 

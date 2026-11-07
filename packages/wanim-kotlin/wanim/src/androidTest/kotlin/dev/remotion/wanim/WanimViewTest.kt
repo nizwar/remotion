@@ -226,12 +226,29 @@ class WanimViewTest {
         waitUntil("render thread ended") { !thread.isAlive }
         val frame = view.currentFrame
 
+        Thread.sleep(300)
+        assertEquals("position must survive the detach", frame, view.currentFrame)
+
         onMain { parent.addView(view, 128, 96) }
         waitUntil("surface is back") { view.renderThreadForTest != null }
         assertTrue(view.renderThreadForTest !== thread)
         waitUntil("running again") { view.renderThreadForTest?.isRunningForTest == true }
         assertEquals("ready must not repeat", 1, events.count { it == "ready" })
-        assertTrue(view.currentFrame >= 0 && frame >= 0)
+    }
+
+    @Test
+    fun reattachShowsThePausedFrameAgain() {
+        val view = addView(Fixtures.official())
+        onMain { view.seek(7) }
+        waitUntil("frame 7 on screen") { Color.alpha(pixelsOf(view).getPixel(100, 70)) == 255 }
+        val parent = view.parent as ViewGroup
+        onMain { parent.removeView(view) }
+        onMain { parent.addView(view, 128, 96) }
+        waitUntil("frame 7 is back") {
+            view.renderThreadForTest != null && Color.alpha(pixelsOf(view).getPixel(100, 70)) == 255
+        }
+        assertEquals(7, view.currentFrame)
+        assertFalse(view.isPlaying)
     }
 
     @Test

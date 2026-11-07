@@ -10,6 +10,7 @@ internal class QuadProgram {
     private val program: Int
     private val buffers = IntArray(1)
     private val vertexArrays = IntArray(1)
+    private val nearestSampler = IntArray(1)
     private val quadUniform: Int
     private val uvUniform: Int
 
@@ -44,6 +45,20 @@ internal class QuadProgram {
         GLES30.glUniform1i(GLES30.glGetUniformLocation(program, "uAtlas"), 0)
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
         GLES30.glClearColor(0f, 0f, 0f, 0f)
+
+        GLES30.glGenSamplers(1, nearestSampler, 0)
+        GLES30.glSamplerParameteri(nearestSampler[0], GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_NEAREST)
+        GLES30.glSamplerParameteri(nearestSampler[0], GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_NEAREST)
+        GLES30.glSamplerParameteri(nearestSampler[0], GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+        GLES30.glSamplerParameteri(nearestSampler[0], GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+    }
+
+    /**
+     * Without scaling, every pixel samples a texel center, where linear filtering should return
+     * that texel. GPUs do not hit it exactly though, and mix in a little of the neighbor.
+     */
+    fun setPixelAligned(aligned: Boolean) {
+        GLES30.glBindSampler(0, if (aligned) nearestSampler[0] else 0)
     }
 
     fun setOpaque(opaque: Boolean) {
@@ -84,8 +99,8 @@ internal class QuadProgram {
             -h * layout.scaleY * 2f / viewHeight,
         )
 
-        val insetX = if (layout.scaleX == 1f) 0f else 0.5f
-        val insetY = if (layout.scaleY == 1f) 0f else 0.5f
+        val insetX = if (layout.scaleX == 1f) 0f else EDGE_INSET
+        val insetY = if (layout.scaleY == 1f) 0f else EDGE_INSET
         GLES30.glUniform4f(
             uvUniform,
             (x + insetX) / atlas.width,
@@ -111,6 +126,10 @@ internal class QuadProgram {
     }
 
     private companion object {
+        // Half a texel, plus a margin for the sub-texel precision of the filtering hardware.
+        // Exactly on a texel center, GPUs still mix in a little of the transparent gutter.
+        const val EDGE_INSET = 0.5f + 1f / 64f
+
         val CORNERS = floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)
 
         const val VERTEX_SHADER = """#version 300 es

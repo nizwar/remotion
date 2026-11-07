@@ -75,7 +75,7 @@ Each atlas is one texture, and each frame is one textured quad: one draw call, n
 Textures:
 
 - Premultiply alpha when decoding, and upload RGBA8. Filtering straight alpha creates dark fringes.
-- Use linear filtering, clamp to edge, no mipmaps.
+- Use linear filtering, clamp to edge, no mipmaps. Use nearest filtering when drawing 1:1 on whole pixels, as some GPUs are not exact at texel centers.
 - Do not use an sRGB texture or render target format: Colors are blended as stored, as the browser does.
 
 Drawing frame `f`:
@@ -83,7 +83,7 @@ Drawing frame `f`:
 1. Clear to transparent, or to the background of the host view.
 2. If `frames[f]` is `-1`, stop here.
 3. `scale` and `origin` map the canvas into the view, depending on the fit mode. The quad is at `origin + (dx, dy) * scale`, with size `(w, h) * scale`.
-4. Texture coordinates go from `(x, y) / atlasSize` to `(x + w, y + h) / atlasSize`. If `scale` is not 1, move each edge inwards by half a texel so that sampling stays inside of the sprite.
+4. Texture coordinates go from `(x, y) / atlasSize` to `(x + w, y + h) / atlasSize`. If `scale` is not 1, move each edge inwards by slightly more than half a texel (`0.5 + 1/64`) so that sampling stays inside of the sprite: Some GPUs read a neighboring texel when sampling exactly on a texel center.
 5. Blend with `src = ONE, dst = ONE_MINUS_SRC_ALPHA`, or disable blending if `opaque` is true.
 
 Playback:

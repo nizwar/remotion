@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
@@ -102,6 +103,28 @@ class WanimFileTest {
         val padded = ByteArray(5) + sample
         val buffer = ByteBuffer.wrap(padded).also { it.position(5) }
         assertConforms(WanimFile.open(buffer, null))
+    }
+
+    @Test
+    fun compressedFixtureHoldsIndexedAtlasesOfTheSameAnimation() {
+        val compressed = open(resource("sample-compressed.wanim"))
+        val original = open(sample).manifest
+        assertArrayEquals(original.frames, compressed.manifest.frames)
+        assertArrayEquals(original.sprites, compressed.manifest.sprites)
+        assertEquals(original.width, compressed.manifest.width)
+        assertEquals(original.height, compressed.manifest.height)
+        assertEquals(original.fps, compressed.manifest.fps, 0.0)
+        assertEquals(original.gpuBytes, compressed.manifest.gpuBytes)
+
+        val pngSignature = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+        for (index in compressed.manifest.atlases.indices) {
+            val png = compressed.readAtlas(index)
+            assertArrayEquals(pngSignature, png.copyOf(8))
+            val colorTypeOfIhdr = png[25].toInt()
+            assertEquals("indexed color", 3, colorTypeOfIhdr)
+            assertEquals("bit depth", true, png[24].toInt() in listOf(1, 2, 4, 8))
+            assertTrue("tRNS chunk", String(png, Charsets.ISO_8859_1).contains("tRNS"))
+        }
     }
 
     @Test

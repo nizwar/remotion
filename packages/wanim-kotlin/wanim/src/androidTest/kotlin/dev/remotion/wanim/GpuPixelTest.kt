@@ -5,17 +5,33 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.opengl.GLES30
 import android.os.Debug
+import android.util.Log
+import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.remotion.wanim.internal.WanimManifest
+import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class GpuPixelTest {
+    // These tests draw offscreen. The activity only keeps the process in the foreground, since
+    // the power manager of some devices freezes an idle test process.
+    @get:Rule
+    val activity = ActivityScenarioRule(TestActivity::class.java)
+
+    @After
+    fun noThreadOutlivesItsPlayer() {
+        waitUntil("threads ended: ${wanimThreads()}") { wanimThreads().isEmpty() }
+    }
+
+    private fun wanimThreads() = Thread.getAllStackTraces().keys.filter { it.name.startsWith("wanim-") }
+
     private fun <T> withPlayer(player: OffscreenPlayer, block: (OffscreenPlayer) -> T): T =
         try {
             block(player)
@@ -97,6 +113,75 @@ class GpuPixelTest {
         }
     }
 
+    private fun assertRendersLikeOriginal(width: Int, height: Int) {
+        val original = Fixtures.official()
+        val compressed = Fixtures.compressed()
+        val tolerance = 2
+        withPlayer(OffscreenPlayer(original, width, height)) { want ->
+            withPlayer(OffscreenPlayer(compressed, width, height)) { actual ->
+                want.awaitReady()
+                actual.awaitReady()
+                var largest = 0
+                for (frame in 0 until original.frameCount) {
+                    val expected = want.render(frame)
+                    val pixels = actual.render(frame)
+                    assertEquals(
+                        "frame $frame must be empty exactly where the original is",
+                        original.manifest.frames[frame] == WanimManifest.EMPTY_FRAME,
+                        pixels.all { it == 0.toByte() },
+                    )
+                    for (index in expected.indices) {
+                        val a = expected[index].toInt() and 0xFF
+                        val b = pixels[index].toInt() and 0xFF
+                        val where = "frame $frame, byte $index in ${width}x$height"
+                        if (index % 4 == 3) {
+                            assertEquals("transparency of $where", a == 0, b == 0)
+                        }
+                        largest = maxOf(largest, Math.abs(a - b))
+                        assertTrue("$where: $a and $b", Math.abs(a - b) <= tolerance)
+                    }
+                }
+                Log.i("WanimFixture", "sample-compressed ${width}x$height largest difference: $largest")
+            }
+        }
+    }
+
+    @Test
+    fun indexedAtlasesRenderLikeTheOriginal() = assertRendersLikeOriginal(64, 48)
+
+    @Test
+    fun indexedAtlasesRenderLikeTheOriginalWhenScaled() = assertRendersLikeOriginal(109, 82)
+
+    @Test
+    fun indexedAtlasesDecodeToPremultipliedRgba() {
+        val animation = Fixtures.compressed()
+        for ((index, atlas) in animation.manifest.atlases.withIndex()) {
+            val bitmap = animation.acquireAtlas(index)
+            try {
+                assertEquals(Bitmap.Config.ARGB_8888, bitmap.config)
+                assertTrue(bitmap.isPremultiplied)
+                assertTrue(bitmap.hasAlpha())
+                assertEquals(atlas.width, bitmap.width)
+                assertEquals(atlas.height, bitmap.height)
+                assertEquals("the gutter must stay transparent", 0, Color.alpha(bitmap.getPixel(0, 0)))
+            } finally {
+                animation.releaseAtlas(index)
+            }
+        }
+    }
+
+    @Test
+    fun indexedAtlasesKeepHalfTransparency() {
+        withPlayer(OffscreenPlayer(Fixtures.compressed(), 64, 48)) { player ->
+            player.awaitReady()
+            val red = player.render(0)
+            val pixel = player.pixel(red, 10, 15)
+            assertEquals(128.0, pixel[3].toDouble(), 2.0)
+            assertEquals(128.0, pixel[0].toDouble(), 2.0)
+            assertArrayEquals(intArrayOf(0, 0, 0, 0), player.pixel(red, 3, 8))
+        }
+    }
+
     @Test
     fun heldAndEmptyFrames() {
         withPlayer(OffscreenPlayer(Fixtures.official(), 64, 48)) { player ->
@@ -112,17 +197,17 @@ class GpuPixelTest {
     }
 
     // A sprite of one color: Any sample from the gutter would show as a darker pixel
-    private fun assertScaledSpriteStaysInside(width: Int, height: Int, fit: WanimFit) {
+    private fun assertScaledSpriteStaysInside(width: Int, height: Int, fit: WanimFit, frame: Int, color: IntArray) {
         withPlayer(OffscreenPlayer(Fixtures.official(), width, height, fit)) { player ->
             player.awaitReady()
-            val pixels = player.render(0)
+            val pixels = player.render(frame)
             var covered = 0
             for (y in 0 until height) {
                 for (x in 0 until width) {
                     val pixel = player.pixel(pixels, x, y)
                     if (pixel[3] != 0) {
                         covered++
-                        assertArrayEquals("$x, $y in ${width}x$height", intArrayOf(128, 20, 20, 128), pixel)
+                        assertArrayEquals("$x, $y in ${width}x$height", color, pixel)
                     }
                 }
             }
@@ -133,10 +218,10 @@ class GpuPixelTest {
     @Test
     fun scaledSpritesDoNotSampleTheGutter() {
         for (fit in WanimFit.entries) {
-            assertScaledSpriteStaysInside(128, 96, fit)
-            assertScaledSpriteStaysInside(109, 82, fit)
-            assertScaledSpriteStaysInside(37, 29, fit)
-            assertScaledSpriteStaysInside(300, 500, fit)
+            for ((width, height) in listOf(128 to 96, 109 to 82, 37 to 29, 300 to 500)) {
+                assertScaledSpriteStaysInside(width, height, fit, 0, intArrayOf(128, 20, 20, 128))
+                assertScaledSpriteStaysInside(width, height, fit, 7, intArrayOf(40, 120, 255, 255))
+            }
         }
     }
 

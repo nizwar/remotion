@@ -46,5 +46,12 @@ class WanimLayoutTest {
     fun originStaysOnWholePixelsAtScaleOne() {
         val layout = WanimLayout.compute(WanimFit.Contain, 64, 48, 64, 149)
         assertLayout(layout, 1f, 1f, 0f, 50f)
+        assertTrue(layout.pixelAligned)
+    }
+
+    @Test
+    fun onlyUnscaledLayoutsArePixelAligned() {
+        assertFalse(WanimLayout.compute(WanimFit.Contain, 64, 48, 128, 96).pixelAligned)
+        assertFalse(WanimLayout.compute(WanimFit.Fill, 64, 48, 64, 96).pixelAligned)
     }
 }

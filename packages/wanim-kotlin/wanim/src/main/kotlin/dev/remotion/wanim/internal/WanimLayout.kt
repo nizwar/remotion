@@ -12,6 +12,9 @@ internal class WanimLayout(
     val originX: Float,
     val originY: Float,
 ) {
+    val pixelAligned: Boolean
+        get() = scaleX == 1f && scaleY == 1f && originX == floor(originX) && originY == floor(originY)
+
     fun coversView(canvasWidth: Int, canvasHeight: Int, viewWidth: Int, viewHeight: Int): Boolean =
         originX <= 0f && originY <= 0f &&
             originX + canvasWidth * scaleX >= viewWidth &&

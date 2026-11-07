@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import org.json.JSONObject
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 
 class TestActivity : ComponentActivity()
@@ -32,6 +33,8 @@ object Fixtures {
     fun official() = WanimAnimation(WanimFile.open(ByteBuffer.wrap(bytes("sample.wanim")), null))
 
     fun custom() = WanimAnimation(WanimFile.open(ByteBuffer.wrap(bytes("sample-custom-key.wanim")), customKey))
+
+    fun compressed() = WanimAnimation(WanimFile.open(ByteBuffer.wrap(bytes("sample-compressed.wanim")), null))
 
     fun fromBytes(file: ByteArray) = WanimAnimation(WanimFile.open(ByteBuffer.wrap(file), null))
 
@@ -150,6 +153,7 @@ internal class OffscreenPlayer(
     fun shutdown() {
         thread.shutdown()
         thread.join(5000)
+        assertFalse("the render thread must end", thread.isAlive)
     }
 }
 

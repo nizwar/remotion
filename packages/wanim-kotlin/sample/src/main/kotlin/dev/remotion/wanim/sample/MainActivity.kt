@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         setContentView(
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
+                fitsSystemWindows = true
                 setBackgroundColor(0xFF20242C.toInt())
                 addView(viewContainer, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
                 addView(composeView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))

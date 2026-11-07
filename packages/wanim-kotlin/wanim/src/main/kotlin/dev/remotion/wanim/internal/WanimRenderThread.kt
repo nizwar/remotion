@@ -84,6 +84,12 @@ internal class WanimRenderThread(
             GLES30.glViewport(0, 0, width, height)
             layout = null
             sync()
+            // The buffer for the next draw was dequeued before the resize, so it has the old
+            // size. Only the draw after that one reaches a buffer of the new size.
+            if (ready) {
+                redraw()
+                redraw()
+            }
         }
     }
 
@@ -162,7 +168,9 @@ internal class WanimRenderThread(
 
         if (layout == null || appliedFit != state.fit) {
             appliedFit = state.fit
-            layout = WanimLayout.compute(state.fit, manifest.width, manifest.height, viewWidth, viewHeight)
+            val computed = WanimLayout.compute(state.fit, manifest.width, manifest.height, viewWidth, viewHeight)
+            layout = computed
+            quad?.setPixelAligned(computed.pixelAligned)
             drawnSprite = NOT_DRAWN
             if (ready && !running) {
                 present(state.currentFrame)
@@ -344,6 +352,11 @@ internal class WanimRenderThread(
         }
     }
 
+    private fun redraw() {
+        drawnSprite = NOT_DRAWN
+        present(state.currentFrame)
+    }
+
     private fun drawNothing() {
         quad?.clear()
         swap()
@@ -388,6 +401,7 @@ internal class WanimRenderThread(
         stopFrames()
         releaseGl(contextLost = true)
         ready = false
+        layout = null
         drawnSprite = NOT_DRAWN
         generation++
         initGl()

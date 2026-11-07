@@ -107,6 +107,12 @@ Several views can share one `WanimAnimation`. They share the decrypted manifest 
 
 If the system reports memory pressure, a view keeps only the atlas on screen, and streams until it is shown again.
 
+## Performance
+
+Decryption, decoding and uploads run on a background thread, and the vsync loop and drawing on a render thread of each view. Drawing allocates nothing, a paused view uses no CPU, and a frame that shows the same sprite as the last one is not drawn.
+
+`TextureView` is what lets the player compose with other views, and it has a cost: Android invalidates it on the main thread for each new frame. The main thread is therefore not idle while a frame changes on screen, even though this library schedules nothing on it.
+
 ## Sample
 
 `sample` plays `assets/demo.wanim` in a `WanimView` with a playback rate overlay, and in a `WanimPlayer`. Tap a player to pause it. `BenchmarkActivity` plays several players at once, and logs dropped frames under the tag `WanimBenchmark`:
@@ -124,4 +130,4 @@ adb logcat -s WanimBenchmark
 ./gradlew :wanim:connectedDebugAndroidTest # Pixel exact GPU tests, views and Compose, on a device
 ```
 
-The fixtures in `wanim/src/test/resources/wanim` are copies of `packages/wanim/fixtures`. The tests on a device that use `WanimView` need a screen that is on. `GpuPixelTest` and `WanimOpenTest` draw offscreen, and do not.
+The fixtures in `wanim/src/test/resources/wanim` are copies of `packages/wanim/fixtures`. The tests on a device need a screen that is on and unlocked, since they keep an activity in the foreground.
