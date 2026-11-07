@@ -1,0 +1,70 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-pack-wanim.png
+title: packWanim()
+crumb: '@remotion/wanim'
+---
+
+# packWanim()<AvailableFrom v="4.0.542" />
+
+Packs PNG frames into a `.wanim` file. Use [`npx remotion wanim render`](/docs/cli/wanim) unless you already have frames, for example from [`renderFrames()`](/docs/renderer/render-frames).
+
+```ts twoslash title="pack.ts"
+import {writeFileSync} from 'node:fs';
+import {packWanim} from '@remotion/wanim';
+
+const {file} = await packWanim({
+  framePaths: ['out/element-0.png', 'out/element-1.png'],
+  fps: 30,
+  key: process.env.WANIM_KEY as string,
+  compositionId: 'my-comp',
+  atlasSize: null,
+  onProgress: null,
+});
+
+writeFileSync('out/my-comp.wanim', file);
+```
+
+## Arguments
+
+An object with the following properties:
+
+### `framePaths`
+
+PNG files of the same size, in playback order.
+
+### `fps`
+
+The playback speed.
+
+### `key`
+
+64 hexadecimal characters, see [`generateWanimKey()`](/docs/wanim/generate-wanim-key).
+
+### `compositionId`
+
+A name to store in the file, or `null`.
+
+### `atlasSize`
+
+The maximum width and height of an atlas, up to `4096`. If `null`, it is `2048`, or `4096` if a frame is larger than `1024`.
+
+### `onProgress`
+
+A function that is called with a number between `0` and `1`, or `null`.
+
+## Return value
+
+An object with the following properties:
+
+### `file`
+
+The `.wanim` file as a `Uint8Array`.
+
+### `manifest`
+
+The contents of the file, as returned by [`openWanim()`](/docs/wanim/open-wanim).
+
+## See also
+
+- [Source code for this function](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/src/pack-wanim.ts)
+- [`openWanim()`](/docs/wanim/open-wanim)

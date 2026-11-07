@@ -15,6 +15,7 @@ import {TableOfContents as LambdaTableOfContents} from '../../docs/lambda/table-
 import {TableOfContents as LayoutUtilsTableOfContents} from '../../docs/layout-utils/table-of-contents';
 import {TableOfContents as LicensingTableOfContents} from '../../docs/licensing/TableOfContents';
 import {TableOfContents as LightLeaksTableOfContents} from '../../docs/light-leaks/table-of-contents';
+import {TableOfContents as WanimTableOfContents} from '../../docs/wanim/table-of-contents';
 import {TableOfContents as LottieTableOfContents} from '../../docs/lottie/table-of-contents';
 import {TableOfContents as MacCursorsTableOfContents} from '../../docs/mac-cursors/table-of-contents';
 import {TableOfContents as MediaParserTableOfContents} from '../../docs/media-parser/TableOfContents';
@@ -123,6 +124,9 @@ export const TableOfContents: React.FC = () => {
 			<h2>@remotion/light-leaks</h2>
 			<p>Light Leak effects</p>
 			<LightLeaksTableOfContents />
+			<h2>@remotion/wanim</h2>
+			<p>Export compositions as encrypted sprite animations</p>
+			<WanimTableOfContents />
 			<h2>@remotion/rough-notation</h2>
 			<p>Rough annotation primitives</p>
 			<RoughNotationTableOfContents />

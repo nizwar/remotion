@@ -53,7 +53,7 @@ const {file} = await packWanim({
 	fps: 12,
 	key,
 	compositionId: 'sample',
-	atlasSize: 64,
+	atlasSize: 52,
 	onProgress: null,
 });
 rmSync(dir, {recursive: true});

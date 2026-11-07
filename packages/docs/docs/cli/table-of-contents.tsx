@@ -66,6 +66,10 @@ export const TableOfContents: React.FC = () => {
 					<strong>gpu</strong>
 					<div>Print information about {"Chrome's"} usage of the GPU</div>
 				</TOCItem>
+				<TOCItem link="/docs/cli/wanim">
+					<strong>wanim</strong>
+					<div>Export an encrypted sprite animation</div>
+				</TOCItem>
 				<TOCItem link="/docs/cli/ffmpeg">
 					<strong>ffmpeg</strong>
 					<div>

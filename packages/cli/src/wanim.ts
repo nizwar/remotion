@@ -102,6 +102,11 @@ const renderWanim = async (
 	const atlasSizeFlag = (parsedCli as unknown as Record<string, unknown>)[
 		'atlas-size'
 	];
+	const atlasSize = atlasSizeFlag === undefined ? null : Number(atlasSizeFlag);
+	if (atlasSize !== null && !Number.isInteger(atlasSize)) {
+		throw new Error(`--atlas-size must be a number, got ${atlasSizeFlag}`);
+	}
+
 	const {file, remainingArgs} = findEntryPoint({
 		args,
 		remotionRoot,
@@ -374,7 +379,7 @@ const renderWanim = async (
 		fps: config.fps / everyNthFrame,
 		key,
 		compositionId,
-		atlasSize: typeof atlasSizeFlag === 'number' ? atlasSizeFlag : null,
+		atlasSize,
 		onProgress: (value) => {
 			progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
 		},

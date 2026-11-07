@@ -131,6 +131,7 @@ const sidebars: SidebarsConfig = {
 				'cli/ffmpeg',
 				'cli/ffprobe',
 				'cli/gpu',
+				'cli/wanim',
 				'cli/help',
 			],
 		},
@@ -1091,6 +1092,19 @@ const sidebars: SidebarsConfig = {
 				id: 'enable-scss/overview',
 			},
 			items: ['enable-scss/enable-scss'],
+		},
+		{
+			type: 'category',
+			label: '@remotion/wanim',
+			link: {
+				type: 'doc',
+				id: 'wanim/index',
+			},
+			items: [
+				'wanim/pack-wanim',
+				'wanim/open-wanim',
+				'wanim/generate-wanim-key',
+			],
 		},
 		{
 			type: 'category',

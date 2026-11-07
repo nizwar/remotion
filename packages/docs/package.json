@@ -105,6 +105,7 @@
 		"@remotion/tailwind-v4": "workspace:*",
 		"@remotion/three": "workspace:*",
 		"@remotion/transitions": "workspace:*",
+		"@remotion/wanim": "workspace:*",
 		"@remotion/vercel": "workspace:*",
 		"@remotion/video-matting": "workspace:*",
 		"@remotion/web-renderer": "workspace:*",

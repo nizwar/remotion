@@ -1,0 +1,20 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-generate-wanim-key.png
+title: generateWanimKey()
+crumb: '@remotion/wanim'
+---
+
+# generateWanimKey()<AvailableFrom v="4.0.542" />
+
+Returns a random key for `.wanim` files as 64 hexadecimal characters.
+
+```ts twoslash title="key.ts"
+import {generateWanimKey} from '@remotion/wanim';
+
+const key = generateWanimKey();
+```
+
+## See also
+
+- [Source code for this function](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/src/crypto.ts)
+- [`packWanim()`](/docs/wanim/pack-wanim)

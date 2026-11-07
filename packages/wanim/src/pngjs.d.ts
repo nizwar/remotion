@@ -16,6 +16,7 @@ declare module 'pngjs' {
 				},
 			): Uint8Array;
 		};
+
 		static bitblt(
 			source: PNG,
 			destination: PNG,

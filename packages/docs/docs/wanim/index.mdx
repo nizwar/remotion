@@ -1,0 +1,51 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-index.png
+title: '@remotion/wanim'
+sidebar_label: Overview
+crumb: 'API'
+---
+
+# @remotion/wanim<AvailableFrom v="4.0.542" />
+
+Exports a composition as a `.wanim` file: A single encrypted binary with texture atlases and the coordinates of each frame, which native apps can play on the GPU.
+
+Frames are trimmed to their visible pixels, and repeated or moved pictures are stored once.
+
+<Installation pkg="@remotion/wanim" />
+
+## Creating a file
+
+Create a key once and keep it secret. Then render with [`npx remotion wanim`](/docs/cli/wanim):
+
+```bash
+export WANIM_KEY=$(npx remotion wanim keygen)
+npx remotion wanim render src/index.ts my-comp out/my-comp.wanim
+```
+
+Render a composition without a background to keep it transparent.
+
+## Playing a file
+
+The `@remotion/wanim` package on GitHub contains the [format specification](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/SPEC.md), a sample file to test against, and briefs for building [Kotlin](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/prompts/kotlin.md), [Swift](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/prompts/swift.md) and [Flutter](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/prompts/flutter.md) players.
+
+## Limitations
+
+Keep animations small. Atlases are decoded to textures, so memory depends on the number of unique pixels and not on the file size. Fullscreen animations should use a video instead.
+
+`.wanim` files have no audio.
+
+## Security
+
+Files are encrypted with AES-256-GCM, and cannot be read or modified without the key.
+
+An app that plays a file needs the key too. Anyone who can extract the key from an app can decrypt the files, so encryption raises the effort of copying an animation but cannot make it impossible. Deliver the key from a server rather than storing it in an app if this matters to you.
+
+## APIs
+
+import {TableOfContents} from './table-of-contents';
+
+<TableOfContents />
+
+## License
+
+[Remotion License](https://remotion.dev/license)

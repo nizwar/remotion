@@ -1,0 +1,49 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-cli-wanim.png
+crumb: CLI Reference
+sidebar_label: wanim
+title: npx remotion wanim
+---
+
+# npx remotion wanim<AvailableFrom v="4.0.542" />
+
+Exports a composition as a [`.wanim`](/docs/wanim) sprite animation.
+
+## `render`
+
+```bash
+npx remotion wanim render <entry-point> <composition-id> [<out-name>]
+```
+
+The key is read from the `WANIM_KEY` environment variable. Do not use a variable starting with `REMOTION_`, as those are exposed to your composition.
+
+Supports [`--props`](/docs/cli/render#--props), [`--scale`](/docs/cli/render#--scale), [`--frames`](/docs/cli/render#--frames) with a range, [`--every-nth-frame`](/docs/cli/render#--every-nth-frame), [`--concurrency`](/docs/cli/render#--concurrency) and [`--gl`](/docs/cli/render#--gl).
+
+### `--key-file`
+
+Read the key from a file instead.
+
+### `--atlas-size`
+
+The maximum width and height of an atlas in pixels, up to `4096`.
+
+## `keygen`
+
+Prints a new random key.
+
+```bash
+npx remotion wanim keygen
+```
+
+## `inspect`
+
+Prints the manifest of a file. Without a key, only the format version is printed.
+
+```bash
+npx remotion wanim inspect out/my-comp.wanim
+```
+
+## See also
+
+- [`@remotion/wanim`](/docs/wanim)
+- [`packWanim()`](/docs/wanim/pack-wanim)

@@ -8,13 +8,20 @@
 		"fps": 12,
 		"frameCount": 12,
 		"opaque": false,
-		"gpuBytes": 9856,
+		"gpuBytes": 9488,
 		"atlases": [
 			{
 				"offset": 0,
-				"length": 223,
-				"width": 56,
+				"length": 210,
+				"width": 38,
 				"height": 44,
+				"format": "png"
+			},
+			{
+				"offset": 210,
+				"length": 133,
+				"width": 50,
+				"height": 14,
 				"format": "png"
 			}
 		],
@@ -66,8 +73,8 @@
 			],
 			[
 				0,
-				32,
 				2,
+				20,
 				22,
 				10,
 				8,
@@ -76,16 +83,16 @@
 			[
 				0,
 				2,
-				20,
+				32,
 				34,
 				10,
 				8,
 				30
 			],
 			[
-				0,
+				1,
 				2,
-				32,
+				2,
 				46,
 				10,
 				8,
@@ -108,6 +115,7 @@
 		]
 	},
 	"atlasSha256": [
-		"e9d24d52a2afb51a6d551548117056776efecfd34063df745c26d392a38eba70"
+		"c61f6b33cbc75d611683a4690d00cd27e721f9a5c3f0e96788161bb1547e2db8",
+		"d46d28e3a302fa16187e9015657adf4b3c39503bc581282f7184fd1a12b149a1"
 	]
 }
