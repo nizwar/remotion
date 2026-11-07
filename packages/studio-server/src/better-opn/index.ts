@@ -307,8 +307,9 @@ const startBrowserProcess = async ({
 	if (shouldTryOpenChromiumWithAppleScript({browser, args})) {
 		let appleScriptDenied = false;
 
-		// Will use the first open browser found from list
-		const browsersToTry = await getRunningChromiumBrowsers();
+		// Will use the first open browser found from list. Reusing a tab is only
+		// a convenience: If this fails, the browser gets opened the regular way.
+		const browsersToTry = await getRunningChromiumBrowsers().catch(() => []);
 
 		for (const chromiumBrowser of browsersToTry) {
 			if (appleScriptDenied) {
