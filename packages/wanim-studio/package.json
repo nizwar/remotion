@@ -1,0 +1,21 @@
+{
+	"name": "wanim-studio",
+	"version": "1.0.0",
+	"description": "Create and export .wanim sprite animations",
+	"private": true,
+	"scripts": {
+		"dev": "remotion studio",
+		"list": "remotion compositions src/index.ts",
+		"export": "remotion wanim render src/index.ts"
+	},
+	"dependencies": {
+		"@remotion/cli": "workspace:*",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"remotion": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/react": "catalog:",
+		"typescript": "catalog:"
+	}
+}
