@@ -14,6 +14,10 @@ bun run export LoadingOrb     # Create out/LoadingOrb.wanim
 
 Build the monorepo first using `bunx turbo run make` in the root.
 
+## Sharing with others
+
+`bun run pack` creates `out/wanim-studio.zip`, which only needs Node.js and npm, not this monorepo.
+
 ## Adding an animation
 
 1. Create a component in `src/`, like `src/LoadingOrb.tsx`.

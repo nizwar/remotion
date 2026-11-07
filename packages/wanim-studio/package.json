@@ -6,7 +6,8 @@
 	"scripts": {
 		"dev": "remotion studio",
 		"list": "remotion compositions src/index.ts",
-		"export": "remotion wanim render src/index.ts"
+		"export": "remotion wanim render src/index.ts",
+		"pack": "bun pack-standalone.ts"
 	},
 	"dependencies": {
 		"@remotion/cli": "workspace:*",
