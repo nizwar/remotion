@@ -1,5 +1,6 @@
 .turbo
 bundle.ts
+sync-sdks.ts
 eslint.config.mjs
 src
 dist/test

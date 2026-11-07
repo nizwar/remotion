@@ -13,7 +13,8 @@
 		"formatting": "oxfmt src --check",
 		"format": "oxfmt src",
 		"make": "tsc -d && bun --env-file=../.env.bundle bundle.ts",
-		"test": "bun test src/test"
+		"test": "bun test src/test",
+		"sync-sdks": "bun sync-sdks.ts"
 	},
 	"author": "Jonny Burger <jonny@remotion.dev>",
 	"contributors": [],
