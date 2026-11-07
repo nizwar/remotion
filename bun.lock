@@ -631,6 +631,7 @@
         "@remotion/transitions": "workspace:*",
         "@remotion/vercel": "workspace:*",
         "@remotion/video-matting": "workspace:*",
+        "@remotion/wanim": "workspace:*",
         "@remotion/web-renderer": "workspace:*",
         "@remotion/webcodecs": "workspace:*",
         "@remotion/whisper-web": "workspace:*",
