@@ -1,4 +1,5 @@
-// Regenerates sample.wanim, sample-custom-key.wanim and expected.json. Run from packages/wanim:
+// Regenerates sample.wanim, sample-custom-key.wanim, sample-compressed.wanim and
+// expected.json. Run from packages/wanim:
 // bun fixtures/generate.ts
 import {createHash} from 'node:crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
@@ -49,18 +50,21 @@ const framePaths = Array.from({length: 12}, (_, frame) => {
 	return framePath;
 });
 
-const pack = (key: string | null) =>
+const pack = (key: string | null, compression: 'none' | 'small' = 'none') =>
 	packWanim({
 		framePaths,
 		fps: 12,
 		key,
 		compositionId: 'sample',
 		atlasSize: 52,
+		canvas: null,
+		compression,
 		onProgress: null,
 	});
 
 const {file} = await pack(null);
 const {file: customKeyFile} = await pack(customKey);
+const {file: compressedFile} = await pack(null, 'small');
 rmSync(dir, {recursive: true});
 
 const {manifest, readAtlas} = openWanim({file, key: null});
@@ -69,6 +73,7 @@ writeFileSync(
 	path.join(import.meta.dir, 'sample-custom-key.wanim'),
 	customKeyFile,
 );
+writeFileSync(path.join(import.meta.dir, 'sample-compressed.wanim'), compressedFile);
 writeFileSync(
 	path.join(import.meta.dir, 'expected.json'),
 	`${JSON.stringify(

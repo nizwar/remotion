@@ -1,4 +1,5 @@
 import type {StillImageFormat, VideoImageFormat} from '@remotion/renderer';
+import type {WanimOptions} from '@remotion/studio-shared';
 import React from 'react';
 import {VERTICAL_SCROLLBAR_CLASSNAME} from '../Menu/is-menu-item';
 import type {SegmentedControlItem} from '../SegmentedControl';
@@ -8,6 +9,8 @@ import {label, optionRow, rightRow} from './layout';
 import type {RenderType} from './RenderModalAdvanced';
 import {RenderModalHr} from './RenderModalHr';
 import {ScaleSetting} from './ScaleSetting';
+import type {WanimSize} from './WanimSizeSetting';
+import {WanimSizeSetting} from './WanimSizeSetting';
 
 const container: React.CSSProperties = {
 	flex: 1,
@@ -26,6 +29,10 @@ export const RenderModalPicture: React.FC<{
 	readonly jpegQuality: number;
 	readonly compositionWidth: number;
 	readonly compositionHeight: number;
+	readonly wanimSize: WanimSize;
+	readonly setWanimSize: (size: WanimSize) => void;
+	readonly wanimCompression: WanimOptions['compression'];
+	readonly setWanimCompression: (value: WanimOptions['compression']) => void;
 }> = ({
 	renderMode,
 	scale,
@@ -38,6 +45,10 @@ export const RenderModalPicture: React.FC<{
 	stillImageFormat,
 	compositionWidth,
 	compositionHeight,
+	wanimSize,
+	setWanimSize,
+	wanimCompression,
+	setWanimCompression,
 }) => {
 	return (
 		<div style={container} className={VERTICAL_SCROLLBAR_CLASSNAME}>
@@ -69,12 +80,23 @@ export const RenderModalPicture: React.FC<{
 			{renderMode === 'video' && !usesSharedMemoryCapture ? (
 				<RenderModalHr />
 			) : null}
-			<ScaleSetting
-				scale={scale}
-				setScale={setScale}
-				compositionWidth={compositionWidth}
-				compositionHeight={compositionHeight}
-			/>
+			{renderMode === 'wanim' ? (
+				<WanimSizeSetting
+					size={wanimSize}
+					setSize={setWanimSize}
+					compression={wanimCompression}
+					setCompression={setWanimCompression}
+					compositionWidth={compositionWidth}
+					compositionHeight={compositionHeight}
+				/>
+			) : (
+				<ScaleSetting
+					scale={scale}
+					setScale={setScale}
+					compositionWidth={compositionWidth}
+					compositionHeight={compositionHeight}
+				/>
+			)}
 		</div>
 	);
 };

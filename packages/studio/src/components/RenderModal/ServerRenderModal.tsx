@@ -18,6 +18,7 @@ import type {
 	UiOpenGlOptions,
 } from '@remotion/studio-shared';
 import {getDefaultOutLocation} from '@remotion/studio-shared';
+import type {WanimOptions} from '@remotion/studio-shared';
 import React, {
 	useCallback,
 	useContext,
@@ -99,6 +100,8 @@ import {
 } from './ResolveCompositionBeforeModal';
 import type {UpdaterFunction} from './SchemaEditor/ZodSwitch';
 import {useRenderFrameInput} from './use-render-frame-input';
+import type {WanimSize} from './WanimSizeSetting';
+import {getInitialWanimSize, getWanimRenderScale} from './WanimSizeSetting';
 
 type State =
 	| {
@@ -388,6 +391,17 @@ const RenderModal: React.FC<
 		() => initialJpegQuality,
 	);
 	const [scale, setScale] = useState(() => initialScale);
+	const [wanimSize, setWanimSize] = useState<WanimSize>(() =>
+		getInitialWanimSize({
+			retry: retrySettings?.wanim ?? null,
+			scale: initialScale,
+			compositionWidth: resolvedComposition.width,
+			compositionHeight: resolvedComposition.height,
+		}),
+	);
+	const [wanimCompression, setWanimCompression] = useState<
+		WanimOptions['compression']
+	>(() => retrySettings?.wanim?.compression ?? 'none');
 	const [logLevel, setLogLevel] = useState(() => initialLogLevel);
 	const [disallowParallelEncoding, setDisallowParallelEncoding] = useState(
 		retrySettings?.disallowParallelEncoding ?? false,
@@ -1055,7 +1069,7 @@ const RenderModal: React.FC<
 	]);
 
 	const onClickSequence = useCallback(
-		(wanimFps: number | null) => {
+		(wanim: WanimOptions | null) => {
 			setSidebarCollapsedState({left: null, right: 'expanded'});
 			persistSelectedOptionsSidebarPanel('renders');
 			optionsSidebarTabs.current?.selectRendersPanel();
@@ -1063,8 +1077,15 @@ const RenderModal: React.FC<
 			addSequenceRenderJob({
 				compositionId: resolvedComposition.id,
 				outName,
-				imageFormat: wanimFps === null ? sequenceImageFormat : 'png',
-				scale,
+				imageFormat: wanim === null ? sequenceImageFormat : 'png',
+				scale:
+					wanim === null
+						? scale
+						: getWanimRenderScale({
+								size: wanimSize,
+								compositionWidth: resolvedComposition.width,
+								compositionHeight: resolvedComposition.height,
+							}),
 				logLevel,
 				concurrency,
 				endFrame,
@@ -1085,7 +1106,7 @@ const RenderModal: React.FC<
 				mediaCacheSizeInBytes,
 				preferredEffectBackend,
 				licenseKey: renderDefaults.publicLicenseKey,
-				wanimFps,
+				wanim,
 			})
 				.then(() => {
 					dispatchIfMounted({type: 'succeed'});
@@ -1492,7 +1513,13 @@ const RenderModal: React.FC<
 		} else if (renderMode === 'sequence') {
 			onClickSequence(null);
 		} else if (renderMode === 'wanim') {
-			onClickSequence(resolvedComposition.fps);
+			onClickSequence({
+				fps: resolvedComposition.fps,
+				width: wanimSize.width,
+				height: wanimSize.height,
+				fit: wanimSize.locked ? 'stretch' : wanimSize.fit,
+				compression: wanimCompression,
+			});
 		} else {
 			onClickVideo();
 		}
@@ -1505,6 +1532,8 @@ const RenderModal: React.FC<
 		renderDisabled,
 		renderMode,
 		resolvedComposition.fps,
+		wanimSize,
+		wanimCompression,
 	]);
 
 	useEffect(() => {
@@ -1735,6 +1764,10 @@ const RenderModal: React.FC<
 							stillImageFormat={stillImageFormat}
 							compositionWidth={resolvedComposition.width}
 							compositionHeight={resolvedComposition.height}
+							wanimSize={wanimSize}
+							setWanimSize={setWanimSize}
+							wanimCompression={wanimCompression}
+							setWanimCompression={setWanimCompression}
 						/>
 					) : tab === 'audio' ? (
 						<RenderModalAudio

@@ -40,6 +40,10 @@ const cliOnlyOptions: Record<string, CommandHelpOption> = {
 		flag: '--key-file <path>',
 		description: 'Use the custom key in this file.',
 	},
+	compress: {
+		flag: '--compress <none|balanced|small>',
+		description: 'Reduce the file size, with some loss of color.',
+	},
 	'atlas-size': {
 		flag: '--atlas-size <pixels>',
 		description: 'Set the maximum atlas size, up to 4096.',
@@ -555,6 +559,7 @@ export const cliCommandHelp = [
 		options: options([
 			'key-file',
 			'atlas-size',
+			'compress',
 			'output',
 			'props',
 			'scale',

@@ -53,6 +53,28 @@ final class WanimTests: XCTestCase {
 		}
 	}
 
+	/// Compressed atlases are indexed PNGs, which must decode like any other.
+	func testCompressedFixtureDrawsTheSamePicture() async throws {
+		let plain = try WanimAnimation(data: fixture("sample.wanim"))
+		let compressed = try WanimAnimation(data: fixture("sample-compressed.wanim"))
+		XCTAssertEqual(compressed.manifest.frames, plain.manifest.frames)
+		XCTAssertEqual(compressed.manifest.sprites, plain.manifest.sprites)
+		let plainRenderer = try WanimRenderer(animation: plain)
+		let compressedRenderer = try WanimRenderer(animation: compressed)
+		plainRenderer.fit = .scale(1)
+		compressedRenderer.fit = .scale(1)
+		try await plainRenderer.prepare()
+		try await compressedRenderer.prepare()
+		for frame in 0 ..< plain.manifest.frameCount {
+			let width = plain.manifest.width
+			let height = plain.manifest.height
+			let a = try plainRenderer.renderPixels(frame: frame, width: width, height: height)
+			let b = try compressedRenderer.renderPixels(frame: frame, width: width, height: height)
+			let largest = zip(a.bytes, b.bytes).map { abs(Int($0) - Int($1)) }.max() ?? 0
+			XCTAssertLessThanOrEqual(largest, 8, "frame \(frame)")
+		}
+	}
+
 	func testMissingAndWrongCustomKey() throws {
 		let data = try fixture("sample-custom-key.wanim")
 		assertThrows(.missingCustomKey) { _ = try WanimAnimation(data: data) }

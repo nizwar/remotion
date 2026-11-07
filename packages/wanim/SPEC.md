@@ -2,7 +2,7 @@
 
 A `.wanim` file is an encrypted sprite animation: one or more texture atlases, plus a JSON manifest that says which part of which atlas to draw for each frame. Official players open every official file without any setup, and other tools cannot read anything but the header below.
 
-All integers are little-endian. The files in [`fixtures/`](./fixtures) are the conformance test: `sample.wanim` uses the official key, `sample-custom-key.wanim` uses `expected.json.customKey`. For both, a correct reader reproduces `expected.json.manifest`, and the SHA-256 of each decrypted atlas matches `expected.json.atlasSha256`.
+All integers are little-endian. The files in [`fixtures/`](./fixtures) are the conformance test: `sample.wanim` uses the official key, `sample-custom-key.wanim` uses `expected.json.customKey`, and `sample-compressed.wanim` holds indexed PNG atlases with the same frames. For the first two, a correct reader reproduces `expected.json.manifest`, and the SHA-256 of each decrypted atlas matches `expected.json.atlasSha256`.
 
 ## File layout
 
@@ -64,7 +64,7 @@ Block 0 decrypts to UTF-8 JSON. Ignore unknown fields.
 | `sprites`                 | `[atlas, x, y, w, h, dx, dy]`: Copy the rectangle `x, y, w, h` of `atlas` to `dx, dy` on the canvas |
 | `opaque`                  | Every frame covers the whole canvas with fully opaque pixels                                        |
 | `gpuBytes`                | Memory of all atlases as RGBA8 textures                                                             |
-| `atlases[].format`        | `png`: 8 bit RGBA with straight alpha, sRGB                                                         |
+| `atlases[].format`        | `png`: Any 8 bit PNG with straight alpha, sRGB                                                         |
 
 `x` and `y` count from the top left corner. Atlas sizes are at most 4096, are not powers of two, and sprites have a transparent gutter of 2 pixels. A sprite may be shared by many frames, and several sprites may point to the same rectangle.
 

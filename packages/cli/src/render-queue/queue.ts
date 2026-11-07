@@ -83,10 +83,10 @@ const processJob = async ({
 		return;
 	}
 
-	if (job.type === 'sequence' && job.wanimFps !== null) {
+	if (job.type === 'sequence' && job.wanim !== null) {
 		await processWanimJob({
 			job,
-			wanimFps: job.wanimFps,
+			wanim: job.wanim,
 			remotionRoot,
 			entryPoint,
 			onProgress,

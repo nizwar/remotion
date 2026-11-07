@@ -114,6 +114,14 @@ type RenderJobDynamicStatus =
 			};
 	  };
 
+export type WanimOptions = {
+	fps: number;
+	width: number;
+	height: number;
+	fit: 'contain' | 'cover' | 'stretch';
+	compression: 'none' | 'balanced' | 'small';
+};
+
 type RenderJobDynamicFields =
 	| ({
 			type: 'still';
@@ -135,8 +143,8 @@ type RenderJobDynamicFields =
 			concurrency: number;
 			startFrame: number;
 			endFrame: number;
-			// If not null, the frames get packed into a .wanim file playing at this rate
-			wanimFps: number | null;
+			// If not null, the frames get packed into a .wanim file
+			wanim: WanimOptions | null;
 			offthreadVideoCacheSizeInBytes: number | null;
 			mediaCacheSizeInBytes: number | null;
 			preferredEffectBackend: PreferredEffectBackend;

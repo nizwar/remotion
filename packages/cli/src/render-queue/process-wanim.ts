@@ -5,6 +5,7 @@ import path from 'node:path';
 import type {LogLevel} from '@remotion/renderer';
 import {RenderInternals} from '@remotion/renderer';
 import type {JobProgressCallback, RenderJob} from '@remotion/studio-server';
+import type {WanimOptions} from '@remotion/studio-shared';
 import {packWanim} from '@remotion/wanim';
 import {Log} from '../log';
 import {GPU_BUDGET_IN_BYTES, getWanimKey} from '../wanim';
@@ -16,7 +17,7 @@ const RENDER_SHARE = 0.9;
 
 export const processWanimJob = async ({
 	job,
-	wanimFps,
+	wanim,
 	remotionRoot,
 	entryPoint,
 	onProgress,
@@ -25,7 +26,7 @@ export const processWanimJob = async ({
 	fixedConfig,
 }: {
 	job: RenderJob;
-	wanimFps: number;
+	wanim: WanimOptions;
 	remotionRoot: string;
 	entryPoint: string;
 	onProgress: JobProgressCallback;
@@ -67,10 +68,12 @@ export const processWanimJob = async ({
 
 	const {file, manifest} = await packWanim({
 		framePaths,
-		fps: wanimFps,
+		fps: wanim.fps,
 		key: getWanimKey(),
 		compositionId: job.compositionId,
 		atlasSize: null,
+		canvas: {width: wanim.width, height: wanim.height, fit: wanim.fit},
+		compression: wanim.compression,
 		onProgress: (value) => {
 			if (latest.progress) {
 				onProgress({

@@ -880,4 +880,30 @@ void main() {
       );
     });
   });
+
+  testWidgets('compressed atlases are indexed PNGs that decode and play', (
+    tester,
+  ) async {
+    Object? failure;
+    final animation = (await tester.runAsync(
+      () => WanimAnimation.load(fixture('sample-compressed.wanim')),
+    ))!;
+    addTearDown(animation.dispose);
+    expect(animation.manifest.frames, hasLength(12));
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: WanimPlayer(
+          animation: animation,
+          onError: (error) => failure = error,
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(failure, isNull);
+    expect(animation.isResident, isTrue);
+  });
 }

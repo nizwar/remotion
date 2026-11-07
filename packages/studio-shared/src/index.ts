@@ -400,7 +400,7 @@ export {
 	StitchingProgressInput,
 	UiOpenGlOptions,
 } from './render-job';
-export type {CompletedClientRender} from './render-job';
+export type {CompletedClientRender, WanimOptions} from './render-job';
 export {
 	getRequiredPackageForEffectImportPath,
 	getRequiredPackageForInsertableElement,

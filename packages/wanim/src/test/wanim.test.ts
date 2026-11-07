@@ -4,7 +4,9 @@ import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {PNG} from 'pngjs';
+import type {WanimCompression} from '../compress-atlas';
 import {concatBytes, generateWanimKey} from '../crypto';
+import type {WanimCanvas} from '../fit-frame';
 import {openWanim, readWanimHeader} from '../open-wanim';
 import {packWanim} from '../pack-wanim';
 
@@ -50,6 +52,8 @@ const pack = (framePaths: string[], atlasSize: number | null = null) =>
 		key,
 		compositionId: 'test',
 		atlasSize,
+		canvas: null,
+		compression: 'none',
 		onProgress: null,
 	});
 
@@ -207,6 +211,8 @@ test('rejects malformed keys and files', async () => {
 			key: 'short',
 			compositionId: null,
 			atlasSize: null,
+			canvas: null,
+			compression: 'none',
 			onProgress: null,
 		}),
 	).rejects.toThrow(/64 hexadecimal/);
@@ -220,6 +226,8 @@ test('official files open without a key, and ignore a passed key', async () => {
 		key: null,
 		compositionId: null,
 		atlasSize: null,
+		canvas: null,
+		compression: 'none',
 		onProgress: null,
 	});
 	expect(readWanimHeader(file).customKey).toBe(false);
@@ -244,6 +252,128 @@ test('rejects unknown flags', async () => {
 	const flagged = file.slice();
 	flagged[10] = 2;
 	expect(() => readWanimHeader(flagged)).toThrow(/flags/);
+});
+
+const packCanvas = (framePath: string, canvas: WanimCanvas) =>
+	packWanim({
+		framePaths: [framePath],
+		fps: 30,
+		key,
+		compositionId: null,
+		atlasSize: null,
+		canvas,
+		compression: 'none',
+		onProgress: null,
+	});
+
+const pixelAt = (data: Uint8Array, width: number, x: number, y: number) =>
+	Array.from(data.subarray((y * width + x) * 4, (y * width + x) * 4 + 4));
+
+test('contain centers the frame with transparent bars', async () => {
+	const frame = writeFrame(20, 10, () => [200, 10, 10, 255]);
+	const {file, manifest} = await packCanvas(frame, {
+		width: 20,
+		height: 20,
+		fit: 'contain',
+	});
+	expect([manifest.width, manifest.height, manifest.opaque]).toEqual([
+		20,
+		20,
+		false,
+	]);
+	const {data} = reconstruct(file, 0);
+	expect(pixelAt(data, 20, 10, 2)).toEqual([0, 0, 0, 0]);
+	expect(pixelAt(data, 20, 10, 10)).toEqual([200, 10, 10, 255]);
+});
+
+test('cover crops the sides of the frame', async () => {
+	const frame = writeFrame(20, 10, (x) =>
+		x < 5 ? [255, 0, 0, 255] : [0, 255, 0, 255],
+	);
+	const {file, manifest} = await packCanvas(frame, {
+		width: 10,
+		height: 10,
+		fit: 'cover',
+	});
+	expect(manifest.opaque).toBe(true);
+	expect(pixelAt(reconstruct(file, 0).data, 10, 0, 5)).toEqual([
+		0, 255, 0, 255,
+	]);
+});
+
+test('stretch resamples without dark edges', async () => {
+	const frame = writeFrame(20, 10, (x) =>
+		x < 10 ? [255, 255, 255, 255] : [0, 0, 0, 0],
+	);
+	const {file, manifest} = await packCanvas(frame, {
+		width: 5,
+		height: 10,
+		fit: 'stretch',
+	});
+	expect(manifest.width).toBe(5);
+	// This pixel averages white with transparent, and must stay white
+	expect(pixelAt(reconstruct(file, 0).data, 5, 2, 5)).toEqual([
+		255, 255, 255, 128,
+	]);
+});
+
+test('a canvas of the same size changes nothing', async () => {
+	const frame = writeFrame(8, 8, square(1, 1, 3));
+	const {file} = await packCanvas(frame, {width: 8, height: 8, fit: 'stretch'});
+	expect(Array.from(reconstruct(file, 0).data)).toEqual(
+		Array.from(PNG.sync.read(readFileSync(frame)).data),
+	);
+});
+
+const packCompressed = (framePaths: string[], compression: WanimCompression) =>
+	packWanim({
+		framePaths,
+		fps: 30,
+		key,
+		compositionId: null,
+		atlasSize: null,
+		canvas: null,
+		compression,
+		onProgress: null,
+	});
+
+test('compression keeps shape, transparency and opacity', async () => {
+	const gradient = writeFrame(64, 64, (x, y) =>
+		x < 8 ? [0, 0, 0, 0] : [x * 4, y * 4, 128, y < 32 ? 255 : 120],
+	);
+	const original = await packCompressed([gradient], 'none');
+	for (const compression of ['balanced', 'small'] as const) {
+		const {file, manifest} = await packCompressed([gradient], compression);
+		expect(manifest.sprites).toEqual(original.manifest.sprites);
+		const {data} = reconstruct(file, 0);
+		expect(pixelAt(data, 64, 2, 2)).toEqual([0, 0, 0, 0]);
+		expect(pixelAt(data, 64, 40, 8)[3]).toBe(255);
+		const [red = 0, green = 0] = pixelAt(data, 64, 40, 8);
+		expect(Math.abs(red - 160)).toBeLessThan(24);
+		expect(Math.abs(green - 32)).toBeLessThan(24);
+	}
+});
+
+test('compression makes a detailed picture smaller', async () => {
+	const noisy = writeFrame(128, 128, (x, y) => [
+		(x * 37 + y * 91) % 256,
+		(x * 13 + y * 7) % 256,
+		(x * y) % 256,
+		255,
+	]);
+	const none = await packCompressed([noisy], 'none');
+	const small = await packCompressed([noisy], 'small');
+	expect(small.file.length).toBeLessThan(none.file.length);
+});
+
+test('an opaque animation stays opaque in every atlas pixel it uses', async () => {
+	const frame = writeFrame(32, 32, (x) => [x * 8, 40, 200, 255]);
+	const {file, manifest} = await packCompressed([frame], 'small');
+	expect(manifest.opaque).toBe(true);
+	const {data} = reconstruct(file, 0);
+	for (let i = 3; i < data.length; i += 4) {
+		expect(data[i]).toBe(255);
+	}
 });
 
 test('the shared fixtures still open', () => {

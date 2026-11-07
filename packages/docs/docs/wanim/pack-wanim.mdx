@@ -18,6 +18,8 @@ const {file} = await packWanim({
   key: null,
   compositionId: 'my-comp',
   atlasSize: null,
+  canvas: null,
+  compression: 'none',
   onProgress: null,
 });
 
@@ -47,6 +49,16 @@ A name to store in the file, or `null`.
 ### `atlasSize`
 
 The maximum width and height of an atlas, up to `4096`. If `null`, it is `2048`, or `4096` if a frame is larger than `1024`.
+
+### `canvas`
+
+The size of the animation, if it differs from the size of the frames, or `null`. An object with `width`, `height` and `fit`:
+
+`contain` keeps the whole frame and leaves transparent bars. `cover` fills the canvas and crops. `stretch` fills the canvas and changes the aspect ratio.
+
+### `compression`
+
+`none`, `balanced` or `small`. Reduces the file size with some loss of color, by keeping 6 bits per channel or by using 256 colors per atlas. The memory on the GPU stays the same.
 
 ### `onProgress`
 

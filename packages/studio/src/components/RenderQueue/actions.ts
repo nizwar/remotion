@@ -10,6 +10,7 @@ import type {
 	X264Preset,
 } from '@remotion/renderer';
 import type {HardwareAccelerationOption} from '@remotion/renderer/client';
+import type {WanimOptions} from '@remotion/studio-shared';
 import type {
 	AddCompositionRequest,
 	AddFolderRequest,
@@ -133,7 +134,7 @@ export const addSequenceRenderJob = ({
 	mediaCacheSizeInBytes,
 	preferredEffectBackend,
 	licenseKey,
-	wanimFps,
+	wanim,
 }: {
 	compositionId: string;
 	outName: string;
@@ -159,12 +160,12 @@ export const addSequenceRenderJob = ({
 	mediaCacheSizeInBytes: number | null;
 	preferredEffectBackend: PreferredEffectBackend;
 	licenseKey: string | null;
-	wanimFps: number | null;
+	wanim: WanimOptions | null;
 }) => {
 	return callApi('/api/render', {
 		compositionId,
 		type: 'sequence',
-		wanimFps,
+		wanim,
 		outName,
 		imageFormat,
 		jpegQuality,

@@ -96,6 +96,19 @@ const renderWanim = async (
 		throw new Error(`--atlas-size must be a number, got ${atlasSizeFlag}`);
 	}
 
+	const compressFlag = (parsedCli as unknown as Record<string, unknown>)
+		.compress;
+	const compression = compressFlag === undefined ? 'none' : compressFlag;
+	if (
+		compression !== 'none' &&
+		compression !== 'balanced' &&
+		compression !== 'small'
+	) {
+		throw new Error(
+			`--compress must be "none", "balanced" or "small", got ${compressFlag}`,
+		);
+	}
+
 	const {file, remainingArgs} = findEntryPoint({
 		args,
 		remotionRoot,
@@ -369,6 +382,8 @@ const renderWanim = async (
 		key,
 		compositionId,
 		atlasSize,
+		canvas: null,
+		compression,
 		onProgress: (value) => {
 			progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
 		},

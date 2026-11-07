@@ -19,6 +19,7 @@ import type {
 	PrecomposeJsxNodesRequest,
 	RenderDefaults,
 } from '@remotion/studio-shared';
+import type {WanimOptions} from '@remotion/studio-shared';
 import type {
 	RenderStillOnWebImageFormat,
 	WebRendererAudioCodec,
@@ -75,6 +76,7 @@ export type ServerRenderRetrySettings = {
 	separateAudioTo: string | null;
 	disallowParallelEncoding: boolean;
 	sequenceImageFormat: VideoImageFormat | null;
+	wanim: WanimOptions | null;
 };
 
 export type RenderModalState = {

@@ -1,12 +1,16 @@
 import {createHash, randomBytes} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {PNG} from 'pngjs';
+import type {WanimCompression} from './compress-atlas';
+import {encodePalettePng, posterize} from './compress-atlas';
 import {
 	concatBytes,
 	deriveFileKey,
 	encryptBlock,
 	parseWanimKey,
 } from './crypto';
+import type {WanimCanvas} from './fit-frame';
+import {fitFrame} from './fit-frame';
 import type {WanimAtlas, WanimManifest, WanimSprite} from './format';
 import {
 	WANIM_FLAG_CUSTOM_KEY,
@@ -46,6 +50,11 @@ export type PackWanimOptions = {
 	compositionId: string | null;
 	// Size limit of an atlas. By default 2048, or 4096 for frames larger than 1024.
 	atlasSize: number | null;
+	// The size of the animation, if it differs from the size of the frames
+	canvas: WanimCanvas | null;
+	// Lossy: `balanced` reduces the color depth, `small` uses 256 colors per atlas.
+	// Only the file gets smaller, the memory on the GPU stays the same.
+	compression: WanimCompression;
 	onProgress: ((progress: number) => void) | null;
 };
 
@@ -60,6 +69,8 @@ export const packWanim = async ({
 	key,
 	compositionId,
 	atlasSize,
+	canvas,
+	compression,
 	onProgress,
 }: PackWanimOptions): Promise<PackWanimResult> => {
 	const masterKey = parseWanimKey(key ?? WANIM_OFFICIAL_KEY);
@@ -83,7 +94,8 @@ export const packWanim = async ({
 	}
 
 	const readFrame = async (frameIndex: number) => {
-		return PNG.sync.read(await readFile(framePaths[frameIndex] as string));
+		const png = PNG.sync.read(await readFile(framePaths[frameIndex] as string));
+		return canvas === null ? png : fitFrame(png, canvas);
 	};
 
 	// 1st pass: Only keeps the bounds of each picture, because all frames of a
@@ -251,12 +263,18 @@ export const packWanim = async ({
 			);
 		}
 
+		if (compression === 'balanced') {
+			posterize(atlas.data);
+		}
+
 		pngs.push(
-			PNG.sync.write(atlas, {
-				colorType: 6,
-				deflateLevel: 9,
-				filterType: -1,
-			}),
+			compression === 'small'
+				? encodePalettePng(atlas)
+				: PNG.sync.write(atlas, {
+						colorType: 6,
+						deflateLevel: 9,
+						filterType: -1,
+					}),
 		);
 		onProgress?.(0.5 + (pageIndex + 1) / pages.length / 2);
 	}

@@ -42,6 +42,7 @@ import type {
 import type {GitClientId} from './git-client';
 import type {PackageManager} from './package-manager';
 import type {ProjectInfo} from './project-info';
+import type {WanimOptions} from './render-job';
 import type {
 	CompletedClientRender,
 	RequiredChromiumOptions,
@@ -220,7 +221,7 @@ type AddRenderRequestDynamicFields =
 			concurrency: number;
 			startFrame: number;
 			endFrame: number;
-			wanimFps: number | null;
+			wanim: WanimOptions | null;
 			disallowParallelEncoding: boolean;
 			repro: boolean;
 			chromeMode: ChromeMode;

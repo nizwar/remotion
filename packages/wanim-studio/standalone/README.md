@@ -21,7 +21,7 @@ npm run export LoadingOrb    # Create out/LoadingOrb.wanim
 To reduce the size, pass flags after `--`:
 
 ```bash
-npm run export LoadingOrb -- --scale=0.5 --every-nth-frame=2
+npm run export LoadingOrb -- --scale=0.5 --every-nth-frame=2 --compress=balanced
 ```
 
 To export from the Studio, click Render and choose the Wanim tab.

@@ -107,7 +107,7 @@ export const handleAddRender: ApiHandler<AddRenderRequest, undefined> = ({
 				compositionId: input.compositionId,
 				deletedOutputLocation: false,
 				type: 'sequence',
-				wanimFps: input.wanimFps,
+				wanim: input.wanim,
 				status: 'idle',
 				id,
 				imageFormat: input.imageFormat,
