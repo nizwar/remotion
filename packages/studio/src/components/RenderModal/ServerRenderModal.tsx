@@ -101,7 +101,12 @@ import {
 import type {UpdaterFunction} from './SchemaEditor/ZodSwitch';
 import {useRenderFrameInput} from './use-render-frame-input';
 import type {WanimSize} from './WanimSizeSetting';
-import {getInitialWanimSize, getWanimRenderScale} from './WanimSizeSetting';
+import {
+	getInitialWanimSize,
+	getWanimRenderScale,
+	loadWanimSettings,
+	saveWanimSettings,
+} from './WanimSizeSetting';
 
 type State =
 	| {
@@ -399,9 +404,13 @@ const RenderModal: React.FC<
 		() => initialJpegQuality,
 	);
 	const [scale, setScale] = useState(() => initialScale);
+	const [savedWanim] = useState(() =>
+		loadWanimSettings(resolvedComposition.id),
+	);
 	const [wanimSize, setWanimSize] = useState<WanimSize>(() =>
 		getInitialWanimSize({
 			retry: retrySettings?.wanim ?? null,
+			saved: savedWanim?.size ?? null,
 			scale: initialScale,
 			compositionWidth: resolvedComposition.width,
 			compositionHeight: resolvedComposition.height,
@@ -409,7 +418,17 @@ const RenderModal: React.FC<
 	);
 	const [wanimCompression, setWanimCompression] = useState<
 		WanimOptions['compression']
-	>(() => retrySettings?.wanim?.compression ?? 'none');
+	>(
+		() =>
+			retrySettings?.wanim?.compression ?? savedWanim?.compression ?? 'none',
+	);
+
+	useEffect(() => {
+		saveWanimSettings(resolvedComposition.id, {
+			size: wanimSize,
+			compression: wanimCompression,
+		});
+	}, [resolvedComposition.id, wanimCompression, wanimSize]);
 	const [logLevel, setLogLevel] = useState(() => initialLogLevel);
 	const [disallowParallelEncoding, setDisallowParallelEncoding] = useState(
 		retrySettings?.disallowParallelEncoding ?? false,
@@ -1152,6 +1171,9 @@ const RenderModal: React.FC<
 			mediaCacheSizeInBytes,
 			preferredEffectBackend,
 			renderDefaults.publicLicenseKey,
+			resolvedComposition.width,
+			resolvedComposition.height,
+			wanimSize,
 		],
 	);
 

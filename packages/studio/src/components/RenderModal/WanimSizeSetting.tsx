@@ -1,7 +1,10 @@
 import type {WanimOptions} from '@remotion/studio-shared';
 import React, {useCallback, useMemo, useState} from 'react';
 import {LIGHT_TEXT} from '../../helpers/colors';
+import {Checkmark} from '../../icons/Checkmark';
 import {Checkbox} from '../Checkbox';
+import type {ComboboxValue} from '../NewComposition/ComboBox';
+import {Combobox} from '../NewComposition/ComboBox';
 import {RemotionInput} from '../NewComposition/RemInput';
 import {SegmentedControl} from '../SegmentedControl';
 import {label, optionRow, rightRow} from './layout';
@@ -15,15 +18,62 @@ export type WanimSize = {
 	height: number;
 	locked: boolean;
 	fit: WanimOptions['fit'];
+	mode: 'scale' | 'resolution';
+};
+
+type SavedWanimSettings = {
+	size: WanimSize;
+	compression: WanimOptions['compression'];
+};
+
+const getStorageKey = (compositionId: string) =>
+	`remotion.wanim.${compositionId}`;
+
+export const loadWanimSettings = (
+	compositionId: string,
+): SavedWanimSettings | null => {
+	try {
+		const saved = localStorage.getItem(getStorageKey(compositionId));
+		if (saved === null) {
+			return null;
+		}
+
+		const parsed = JSON.parse(saved) as SavedWanimSettings;
+		const {size} = parsed;
+		return size.width >= 1 &&
+			size.width <= MAX_SIZE &&
+			size.height >= 1 &&
+			size.height <= MAX_SIZE
+			? parsed
+			: null;
+	} catch {
+		return null;
+	}
+};
+
+export const saveWanimSettings = (
+	compositionId: string,
+	settings: SavedWanimSettings,
+) => {
+	try {
+		localStorage.setItem(
+			getStorageKey(compositionId),
+			JSON.stringify(settings),
+		);
+	} catch {
+		// localStorage might not be available
+	}
 };
 
 export const getInitialWanimSize = ({
 	retry,
+	saved,
 	scale,
 	compositionWidth,
 	compositionHeight,
 }: {
 	retry: WanimOptions | null;
+	saved: WanimSize | null;
 	scale: number;
 	compositionWidth: number;
 	compositionHeight: number;
@@ -38,7 +88,12 @@ export const getInitialWanimSize = ({
 			height: retry.height,
 			locked: sameRatio,
 			fit: sameRatio ? 'contain' : retry.fit,
+			mode: sameRatio ? 'scale' : 'resolution',
 		};
+	}
+
+	if (saved) {
+		return saved;
 	}
 
 	return {
@@ -46,6 +101,7 @@ export const getInitialWanimSize = ({
 		height: Math.min(Math.round(compositionHeight * scale), MAX_SIZE),
 		locked: true,
 		fit: 'contain',
+		mode: 'scale',
 	};
 };
 
@@ -137,6 +193,8 @@ export const WanimSizeSetting: React.FC<{
 	compositionWidth,
 	compositionHeight,
 }) => {
+	const {mode} = size;
+
 	const fromScale = useCallback(
 		(scale: number) => {
 			setSize({
@@ -199,6 +257,41 @@ export const WanimSizeSetting: React.FC<{
 		[compositionHeight, compositionWidth, setSize, size],
 	);
 
+	const modeItems = useMemo((): ComboboxValue[] => {
+		const modes: {id: WanimSize['mode']; label: string}[] = [
+			{id: 'scale', label: 'Scale'},
+			{id: 'resolution', label: 'Resolution'},
+		];
+		return modes.map(
+			(item): ComboboxValue => ({
+				type: 'item',
+				id: item.id,
+				value: item.id,
+				label: item.label,
+				leftItem: mode === item.id ? <Checkmark /> : null,
+				keyHint: null,
+				quickSwitcherLabel: null,
+				subMenu: null,
+				onClick: () => {
+					setSize({
+						...size,
+						mode: item.id,
+						locked: item.id === 'scale' ? true : size.locked,
+						height:
+							item.id === 'scale'
+								? Math.max(
+										1,
+										Math.round(
+											(size.width * compositionHeight) / compositionWidth,
+										),
+									)
+								: size.height,
+					});
+				},
+			}),
+		);
+	}, [compositionHeight, compositionWidth, mode, setSize, size]);
+
 	const fitItems = useMemo(() => {
 		const fits: {key: WanimOptions['fit']; label: string}[] = [
 			{key: 'contain', label: 'Contain'},
@@ -241,47 +334,62 @@ export const WanimSizeSetting: React.FC<{
 
 	return (
 		<>
-			<NumberField
-				name="Width"
-				value={size.width}
-				min={1}
-				max={MAX_SIZE}
-				onChange={onWidth}
-			/>
-			<NumberField
-				name="Height"
-				value={size.height}
-				min={1}
-				max={MAX_SIZE}
-				onChange={onHeight}
-			/>
 			<div style={optionRow}>
-				<div style={label}>Lock aspect ratio</div>
+				<div style={label}>Size</div>
 				<div style={rightRow}>
-					<Checkbox
-						checked={size.locked}
-						onChange={onLock}
-						name="lock-aspect-ratio"
-					/>
+					<Combobox values={modeItems} selectedId={mode} aria-label="Size" />
 				</div>
 			</div>
-			{size.locked ? (
-				<NumberField
-					name="Scale"
-					value={Number((size.width / compositionWidth).toFixed(3))}
-					min={1 / compositionWidth}
-					max={MAX_SIZE / Math.max(compositionWidth, compositionHeight)}
-					onChange={fromScale}
-				/>
+			{mode === 'scale' ? (
+				<>
+					<NumberField
+						name="Scale"
+						value={Number((size.width / compositionWidth).toFixed(3))}
+						min={1 / compositionWidth}
+						max={MAX_SIZE / Math.max(compositionWidth, compositionHeight)}
+						onChange={fromScale}
+					/>
+					<div style={hintStyle}>
+						Output: {size.width}×{size.height}
+					</div>
+				</>
 			) : (
 				<>
+					<NumberField
+						name="Width"
+						value={size.width}
+						min={1}
+						max={MAX_SIZE}
+						onChange={onWidth}
+					/>
+					<NumberField
+						name="Height"
+						value={size.height}
+						min={1}
+						max={MAX_SIZE}
+						onChange={onHeight}
+					/>
 					<div style={optionRow}>
-						<div style={label}>Fit</div>
+						<div style={label}>Lock aspect ratio</div>
 						<div style={rightRow}>
-							<SegmentedControl items={fitItems} needsWrapping={false} />
+							<Checkbox
+								checked={size.locked}
+								onChange={onLock}
+								name="lock-aspect-ratio"
+							/>
 						</div>
 					</div>
-					<div style={hintStyle}>{fitHint}</div>
+					{size.locked ? null : (
+						<>
+							<div style={optionRow}>
+								<div style={label}>Fit</div>
+								<div style={rightRow}>
+									<SegmentedControl items={fitItems} needsWrapping={false} />
+								</div>
+							</div>
+							<div style={hintStyle}>{fitHint}</div>
+						</>
+					)}
 				</>
 			)}
 			<div style={optionRow}>
