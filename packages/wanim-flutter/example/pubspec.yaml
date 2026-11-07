@@ -1,0 +1,29 @@
+name: wanim_example
+description: Demo and benchmark of the wanim player.
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  cryptography: ^2.9.0
+  cryptography_flutter: ^2.3.4
+  flutter:
+    sdk: flutter
+  wanim:
+    path: ..
+
+dev_dependencies:
+  crypto: ^3.0.6
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/demo.wanim
+    - assets/fixtures/

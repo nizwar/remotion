@@ -1,0 +1,21 @@
+name: wanim
+description: Plays encrypted .wanim sprite animations on the GPU through the Flutter engine, on Android, iOS, macOS and web.
+version: 1.0.0
+repository: https://github.com/remotion-dev/remotion/tree/main/packages/wanim-flutter
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  cryptography: ^2.9.0
+  cryptography_flutter: ^2.3.4
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  crypto: ^3.0.6
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
