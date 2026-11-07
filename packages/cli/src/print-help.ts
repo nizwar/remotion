@@ -38,7 +38,7 @@ const cliOnlyOptions: Record<string, CommandHelpOption> = {
 	},
 	'key-file': {
 		flag: '--key-file <path>',
-		description: 'Read the key from a file instead of WANIM_KEY.',
+		description: 'Use the custom key in this file.',
 	},
 	'atlas-size': {
 		flag: '--atlas-size <pixels>',
@@ -569,7 +569,7 @@ export const cliCommandHelp = [
 	{
 		path: [WANIM_COMMAND, WANIM_KEYGEN_COMMAND],
 		args: '',
-		description: 'Print a new random key for .wanim files.',
+		description: 'Print a random key for files that use their own key.',
 		documentation: 'https://www.remotion.dev/docs/cli/wanim',
 		options: [],
 	},

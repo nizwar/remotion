@@ -1,15 +1,18 @@
 import {decryptBlock, deriveFileKey, parseWanimKey} from './crypto';
 import type {WanimManifest} from './format';
 import {
+	WANIM_FLAG_CUSTOM_KEY,
 	WANIM_HEADER_LENGTH,
 	WANIM_MAGIC,
 	WANIM_NONCE_PREFIX_LENGTH,
 	WANIM_SALT_LENGTH,
 	WANIM_VERSION,
 } from './format';
+import {WANIM_OFFICIAL_KEY} from './official-key';
 
 export type WanimHeader = {
 	version: number;
+	customKey: boolean;
 	manifestLength: number;
 };
 
@@ -27,15 +30,39 @@ export const readWanimHeader = (file: Uint8Array): WanimHeader => {
 		throw new Error(`Unsupported .wanim version: ${version}`);
 	}
 
-	return {version, manifestLength: view.getUint32(12, true)};
+	const flags = view.getUint16(10, true);
+	if ((flags & ~WANIM_FLAG_CUSTOM_KEY) !== 0) {
+		throw new Error(`Unsupported .wanim flags: ${flags}`);
+	}
+
+	return {
+		version,
+		customKey: (flags & WANIM_FLAG_CUSTOM_KEY) !== 0,
+		manifestLength: view.getUint32(12, true),
+	};
 };
 
-export const openWanim = ({file, key}: {file: Uint8Array; key: string}) => {
-	const {manifestLength} = readWanimHeader(file);
+export const openWanim = ({
+	file,
+	key,
+}: {
+	file: Uint8Array;
+	key: string | null;
+}) => {
+	const {customKey, manifestLength} = readWanimHeader(file);
+	if (customKey && key === null) {
+		throw new Error('This .wanim file was encrypted with a key of its own.');
+	}
+
 	const salt = file.subarray(16, 16 + WANIM_SALT_LENGTH);
 	const noncePrefixStart = 16 + WANIM_SALT_LENGTH;
 	const context = {
-		fileKey: deriveFileKey({masterKey: parseWanimKey(key), salt}),
+		fileKey: deriveFileKey({
+			masterKey: parseWanimKey(
+				customKey ? (key as string) : WANIM_OFFICIAL_KEY,
+			),
+			salt,
+		}),
 		noncePrefix: file.subarray(
 			noncePrefixStart,
 			noncePrefixStart + WANIM_NONCE_PREFIX_LENGTH,

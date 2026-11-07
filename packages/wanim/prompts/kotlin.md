@@ -1,6 +1,6 @@
 # Build a `.wanim` player for Android (Kotlin)
 
-Attach `SPEC.md` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
+Attach `SPEC.md`, `src/official-key.ts` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
 
 ## Goal
 
@@ -9,7 +9,8 @@ Create a Kotlin Android library that plays encrypted `.wanim` sprite animations 
 ## Public API
 
 ```kotlin
-val animation = WanimAnimation.open(context, source, key) // suspend, source = asset, file or ByteArray
+val animation = WanimAnimation.open(context, source) // suspend, source = asset, file or ByteArray
+val custom = WanimAnimation.open(context, source, key = customKey) // only for files with a custom key
 
 WanimView(context).apply {
     setAnimation(animation)
@@ -21,7 +22,7 @@ WanimView(context).apply {
 WanimPlayer(animation, modifier, loop = true, playing = true, onFinished = {}) // Compose
 ```
 
-Also: `pause()`, `seek(frame)`, `speed`, `currentFrame`, and listeners for ready, finished and errors. `WanimException` distinguishes an invalid file, a wrong key or tampered file, and an unsupported version.
+Also: `pause()`, `seek(frame)`, `speed`, `currentFrame`, and listeners for ready, finished and errors. `WanimException` distinguishes an invalid file, a wrong key or tampered file, a missing custom key, and an unsupported version.
 
 ## Implementation requirements
 
@@ -47,13 +48,13 @@ Lifecycle:
 - Pause when the view is detached, invisible, or the activity is stopped. `onTrimMemory` shrinks the texture cache to the current atlas.
 - Several views playing the same `WanimAnimation` share decoded data, and each releases its GPU resources when detached.
 
-## Key handling
+## Official key
 
-Do not put the key in a string constant. Accept it as a `ByteArray` from the host app, and zero the array after deriving the file key. Document for the host app how to obtain it, for example from a server after a Play Integrity check, or split in native code.
+This is the official player, so it opens official files with no setup: Build the official key from `src/official-key.ts` into the library, and keep it private to the library. Apps only pass a key for files whose custom key flag is set. Report a missing custom key as its own error.
 
 ## Verification
 
-- Unit test: Open `fixtures/sample.wanim` with `expected.json.key`, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong key, a flipped byte in each block and a truncated file.
+- Unit test: Open `fixtures/sample.wanim` without a key and `fixtures/sample-custom-key.wanim` with `expected.json.customKey`. For both, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong custom key, a missing custom key, an unknown flag, a flipped byte in each block and a truncated file.
 - Instrumented test: Render each frame of the fixture to an offscreen `EGLSurface` at scale 1, read it with `glReadPixels`, and compare the sprite rectangle with the premultiplied atlas pixels. It must match exactly.
 - A sample app with a playback rate overlay. Show in Android GPU Inspector or `dumpsys gfxinfo` that the main thread does no per-frame work and that CPU use stays flat while playing.
 - Include a benchmark: Report dropped frames over 60 seconds with several players at once on a low-end device.

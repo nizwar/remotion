@@ -1,6 +1,6 @@
 # Build a `.wanim` player for iOS (Swift)
 
-Attach `SPEC.md` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
+Attach `SPEC.md`, `src/official-key.ts` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
 
 ## Goal
 
@@ -9,7 +9,8 @@ Create a Swift Package that plays encrypted `.wanim` sprite animations on the GP
 ## Public API
 
 ```swift
-let animation = try await WanimAnimation(contentsOf: url, key: key) // or Data
+let animation = try await WanimAnimation(contentsOf: url) // or Data
+let custom = try await WanimAnimation(contentsOf: url, key: customKey) // only for files with a custom key
 
 let view = WanimView(animation: animation)
 view.loop = true
@@ -19,7 +20,7 @@ view.play()
 WanimPlayer(animation, loop: true, isPlaying: $playing, onFinished: {}) // SwiftUI
 ```
 
-Also: `pause()`, `seek(toFrame:)`, `speed`, `currentFrame`. `WanimError` distinguishes an invalid file, a wrong key or tampered file, and an unsupported version.
+Also: `pause()`, `seek(toFrame:)`, `speed`, `currentFrame`. `WanimError` distinguishes an invalid file, a wrong key or tampered file, a missing custom key, and an unsupported version.
 
 ## Implementation requirements
 
@@ -46,13 +47,13 @@ Lifecycle:
 - On a memory warning, shrink the texture cache to the current atlas.
 - Several views playing the same `WanimAnimation` share decoded textures.
 
-## Key handling
+## Official key
 
-Do not hardcode the key as a literal. Accept it as `SymmetricKey`, and document for the host app how to obtain it, for example from a server after an App Attest check, stored in the Keychain.
+This is the official player, so it opens official files with no setup: Build the official key from `src/official-key.ts` into the library, and keep it private to the library. Apps only pass a key for files whose custom key flag is set. Report a missing custom key as its own error.
 
 ## Verification
 
-- XCTest: Open `fixtures/sample.wanim` with `expected.json.key`, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong key, a flipped byte in each block and a truncated file.
+- XCTest: Open `fixtures/sample.wanim` without a key and `fixtures/sample-custom-key.wanim` with `expected.json.customKey`. For both, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong custom key, a missing custom key, an unknown flag, a flipped byte in each block and a truncated file.
 - GPU test: Render each frame of the fixture offscreen at scale 1 into an `.rgba8Unorm` texture, read it back and compare the sprite rectangle with the premultiplied atlas pixels. It must match exactly.
 - A sample app. Show in Instruments (Metal System Trace and Time Profiler) that the main thread does no per-frame work besides encoding one draw.
 - Include a benchmark: Report hitches over 60 seconds with several players at once on an older device.

@@ -1,6 +1,6 @@
 # Build a `.wanim` player for Flutter
 
-Attach `SPEC.md` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
+Attach `SPEC.md`, `src/official-key.ts` and the `fixtures/` folder of `@remotion/wanim` to this prompt. `SPEC.md` is the source of truth for the format and rendering rules. Read it first.
 
 ## Goal
 
@@ -9,7 +9,8 @@ Create a Flutter package in pure Dart that plays encrypted `.wanim` sprite anima
 ## Public API
 
 ```dart
-final animation = await WanimAnimation.load(bytes, key: key);
+final animation = await WanimAnimation.load(bytes);
+final custom = await WanimAnimation.load(bytes, key: customKey); // only for files with a custom key
 
 WanimPlayer(
   animation: animation,
@@ -20,7 +21,7 @@ WanimPlayer(
 );
 ```
 
-`WanimAnimation.dispose()` releases all images. `WanimException` distinguishes an invalid file, a wrong key or tampered file, and an unsupported version.
+`WanimAnimation.dispose()` releases all images. `WanimException` distinguishes an invalid file, a wrong key or tampered file, a missing custom key, and an unsupported version.
 
 ## Implementation requirements
 
@@ -47,13 +48,13 @@ Lifecycle:
 - Call `ui.Image.dispose()` when an atlas leaves the LRU, or animations leak GPU memory.
 - `WidgetsBindingObserver.didHaveMemoryPressure` shrinks the cache to the current atlas.
 
-## Key handling
+## Official key
 
-Do not put the key into Dart source: Dart snapshots are easy to read. Accept it as `Uint8List`, and document for the host app how to obtain it, for example from a server after an attestation check, stored with `flutter_secure_storage`.
+This is the official player, so it opens official files with no setup: Build the official key from `src/official-key.ts` into the library, and keep it private to the library. Apps only pass a key for files whose custom key flag is set. Report a missing custom key as its own error.
 
 ## Verification
 
-- Unit test: Open `fixtures/sample.wanim` with `expected.json.key`, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong key, a flipped byte in each block and a truncated file.
+- Unit test: Open `fixtures/sample.wanim` without a key and `fixtures/sample-custom-key.wanim` with `expected.json.customKey`. For both, assert that the manifest equals `expected.json.manifest` and each atlas matches `expected.json.atlasSha256`. Test a wrong custom key, a missing custom key, an unknown flag, a flipped byte in each block and a truncated file.
 - Golden test: Render each frame of the fixture and compare with the reference, including the empty frames.
 - Run the example in profile mode on a device. Show in DevTools that the UI thread stays under 1 ms per frame, that no widget rebuilds happen during playback, and that the raster thread is not janky.
 - Test both Impeller and Skia, and include a benchmark with several players at once.

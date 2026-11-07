@@ -15,7 +15,7 @@ import {packWanim} from '@remotion/wanim';
 const {file} = await packWanim({
   framePaths: ['out/element-0.png', 'out/element-1.png'],
   fps: 30,
-  key: process.env.WANIM_KEY as string,
+  key: null,
   compositionId: 'my-comp',
   atlasSize: null,
   onProgress: null,
@@ -38,7 +38,7 @@ The playback speed.
 
 ### `key`
 
-64 hexadecimal characters, see [`generateWanimKey()`](/docs/wanim/generate-wanim-key).
+`null` to use the official key, or a custom key of 64 hexadecimal characters, see [`generateWanimKey()`](/docs/wanim/generate-wanim-key).
 
 ### `compositionId`
 
@@ -66,5 +66,4 @@ The contents of the file, as returned by [`openWanim()`](/docs/wanim/open-wanim)
 
 ## See also
 
-- [Source code for this function](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/src/pack-wanim.ts)
 - [`openWanim()`](/docs/wanim/open-wanim)

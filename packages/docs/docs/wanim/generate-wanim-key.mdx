@@ -6,7 +6,7 @@ crumb: '@remotion/wanim'
 
 # generateWanimKey()<AvailableFrom v="4.0.542" />
 
-Returns a random key for `.wanim` files as 64 hexadecimal characters.
+Returns a random custom key for `.wanim` files as 64 hexadecimal characters. Files use the official key unless you pass a custom key.
 
 ```ts twoslash title="key.ts"
 import {generateWanimKey} from '@remotion/wanim';
@@ -16,5 +16,4 @@ const key = generateWanimKey();
 
 ## See also
 
-- [Source code for this function](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/src/crypto.ts)
 - [`packWanim()`](/docs/wanim/pack-wanim)

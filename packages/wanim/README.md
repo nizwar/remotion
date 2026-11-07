@@ -14,12 +14,9 @@ Remove the `^` character from the version number to use the exact version.
 ## Usage
 
 ```bash
-export WANIM_KEY=$(npx remotion wanim keygen)
 npx remotion wanim render src/index.ts MyComp out/my-comp.wanim
 ```
 
 - [`SPEC.md`](./SPEC.md) describes the binary format.
 - [`prompts/`](./prompts) contains the briefs for building Kotlin, Swift and Flutter players.
-- [`fixtures/`](./fixtures) contains a sample file which every player must be able to open.
-
-See the [documentation](https://www.remotion.dev/docs/wanim) for more information.
+- [`fixtures/`](./fixtures) contains sample files which every player must be able to open.

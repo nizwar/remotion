@@ -6,7 +6,7 @@ crumb: '@remotion/wanim'
 
 # openWanim()<AvailableFrom v="4.0.542" />
 
-Decrypts the manifest of a `.wanim` file in Node.js and Bun. Throws if the key is wrong or the file was modified.
+Decrypts the manifest of a `.wanim` file in Node.js and Bun. Throws if the file was modified, or if a custom key is missing or wrong.
 
 ```ts twoslash title="open.ts"
 import {readFileSync} from 'node:fs';
@@ -14,7 +14,7 @@ import {openWanim} from '@remotion/wanim';
 
 const {manifest, readAtlas} = openWanim({
   file: new Uint8Array(readFileSync('out/my-comp.wanim')),
-  key: process.env.WANIM_KEY as string,
+  key: null,
 });
 
 console.log(manifest.frameCount);
@@ -31,7 +31,7 @@ The file as a `Uint8Array`.
 
 ### `key`
 
-The key the file was created with.
+The custom key of the file, or `null` if it uses the official key.
 
 ## Return value
 
@@ -47,5 +47,4 @@ Takes the index of an atlas and returns its PNG file as a `Uint8Array`.
 
 ## See also
 
-- [Source code for this function](https://github.com/remotion-dev/remotion/blob/main/packages/wanim/src/open-wanim.ts)
 - [`packWanim()`](/docs/wanim/pack-wanim)

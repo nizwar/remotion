@@ -213,19 +213,57 @@ test('rejects malformed keys and files', async () => {
 	expect(() => readWanimHeader(new Uint8Array(4))).toThrow(/Not a .wanim/);
 });
 
-test('the shared fixture still opens', () => {
+test('official files open without a key, and ignore a passed key', async () => {
+	const {file} = await packWanim({
+		framePaths: [writeFrame(8, 8, square(0, 0, 4))],
+		fps: 30,
+		key: null,
+		compositionId: null,
+		atlasSize: null,
+		onProgress: null,
+	});
+	expect(readWanimHeader(file).customKey).toBe(false);
+	expect(openWanim({file, key: null}).manifest.frameCount).toBe(1);
+	expect(openWanim({file, key}).manifest.frameCount).toBe(1);
+});
+
+test('a file with its own key does not open with the official key', async () => {
+	const {file} = await pack([writeFrame(8, 8, square(0, 0, 4))]);
+	expect(readWanimHeader(file).customKey).toBe(true);
+	expect(() => openWanim({file, key: null})).toThrow(/key of its own/);
+
+	const flagCleared = file.slice();
+	flagCleared[10] = 0;
+	expect(() => openWanim({file: flagCleared, key: null})).toThrow(
+		/key is wrong/,
+	);
+});
+
+test('rejects unknown flags', async () => {
+	const {file} = await pack([writeFrame(8, 8, square(0, 0, 4))]);
+	const flagged = file.slice();
+	flagged[10] = 2;
+	expect(() => readWanimHeader(flagged)).toThrow(/flags/);
+});
+
+test('the shared fixtures still open', () => {
 	const fixtures = path.join(__dirname, '..', '..', 'fixtures');
 	const expected = JSON.parse(
 		readFileSync(path.join(fixtures, 'expected.json'), 'utf8'),
 	);
-	const {manifest, readAtlas} = openWanim({
-		file: new Uint8Array(readFileSync(path.join(fixtures, 'sample.wanim'))),
-		key: expected.key,
-	});
-	expect(manifest).toEqual(expected.manifest);
-	expected.atlasSha256.forEach((sha256: string, index: number) => {
-		expect(createHash('sha256').update(readAtlas(index)).digest('hex')).toBe(
-			sha256,
-		);
-	});
+	for (const [name, fixtureKey] of [
+		['sample.wanim', null],
+		['sample-custom-key.wanim', expected.customKey],
+	]) {
+		const {manifest, readAtlas} = openWanim({
+			file: new Uint8Array(readFileSync(path.join(fixtures, name))),
+			key: fixtureKey,
+		});
+		expect(manifest).toEqual(expected.manifest);
+		expected.atlasSha256.forEach((sha256: string, index: number) => {
+			expect(createHash('sha256').update(readAtlas(index)).digest('hex')).toBe(
+				sha256,
+			);
+		});
+	}
 });

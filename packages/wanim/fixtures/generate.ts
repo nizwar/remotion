@@ -1,4 +1,4 @@
-// Regenerates sample.wanim and expected.json. Run from packages/wanim:
+// Regenerates sample.wanim, sample-custom-key.wanim and expected.json. Run from packages/wanim:
 // bun fixtures/generate.ts
 import {createHash} from 'node:crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
@@ -8,7 +8,8 @@ import {PNG} from 'pngjs';
 import {openWanim} from '../src/open-wanim';
 import {packWanim} from '../src/pack-wanim';
 
-const key = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
+const customKey =
+	'000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
 const width = 64;
 const height = 48;
 
@@ -48,23 +49,31 @@ const framePaths = Array.from({length: 12}, (_, frame) => {
 	return framePath;
 });
 
-const {file} = await packWanim({
-	framePaths,
-	fps: 12,
-	key,
-	compositionId: 'sample',
-	atlasSize: 52,
-	onProgress: null,
-});
+const pack = (key: string | null) =>
+	packWanim({
+		framePaths,
+		fps: 12,
+		key,
+		compositionId: 'sample',
+		atlasSize: 52,
+		onProgress: null,
+	});
+
+const {file} = await pack(null);
+const {file: customKeyFile} = await pack(customKey);
 rmSync(dir, {recursive: true});
 
-const {manifest, readAtlas} = openWanim({file, key});
+const {manifest, readAtlas} = openWanim({file, key: null});
 writeFileSync(path.join(import.meta.dir, 'sample.wanim'), file);
+writeFileSync(
+	path.join(import.meta.dir, 'sample-custom-key.wanim'),
+	customKeyFile,
+);
 writeFileSync(
 	path.join(import.meta.dir, 'expected.json'),
 	`${JSON.stringify(
 		{
-			key,
+			customKey,
 			manifest,
 			atlasSha256: manifest.atlases.map((_, index) =>
 				createHash('sha256').update(readAtlas(index)).digest('hex'),

@@ -81,23 +81,12 @@ const getKey = (): string | null => {
 	return process.env.WANIM_KEY ?? null;
 };
 
-const requireKey = (): string => {
-	const key = getKey();
-	if (key === null) {
-		throw new Error(
-			`No key provided. Set the WANIM_KEY environment variable or pass --key-file. Create a key using \`remotion ${WANIM_COMMAND} ${WANIM_KEYGEN_COMMAND}\`.`,
-		);
-	}
-
-	return key;
-};
-
 const renderWanim = async (
 	remotionRoot: string,
 	args: string[],
 	logLevel: LogLevel,
 ) => {
-	const key = requireKey();
+	const key = getKey();
 	const licenseKey = getLicenseKey();
 	const atlasSizeFlag = (parsedCli as unknown as Record<string, unknown>)[
 		'atlas-size'
@@ -433,10 +422,10 @@ const inspectWanim = (filePath: string | undefined, logLevel: LogLevel) => {
 	const file = new Uint8Array(readFileSync(filePath));
 	const header = readWanimHeader(file);
 	const key = getKey();
-	if (key === null) {
+	if (header.customKey && key === null) {
 		Log.info(
 			{indent: false, logLevel},
-			`.wanim version ${header.version}, contents are encrypted. Pass a key to see them.`,
+			`.wanim version ${header.version}, encrypted with a key of its own. Pass that key to see the contents.`,
 		);
 		return;
 	}
@@ -463,7 +452,12 @@ const printWanimHelp = (logLevel: LogLevel) => {
 		{indent: false, logLevel},
 		`remotion ${WANIM_COMMAND} ${WANIM_KEYGEN_COMMAND}`,
 	);
-	Log.info({indent: false, logLevel}, chalk.gray('Print a new random key.'));
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'Print a random key, for files that should not use the official key.',
+		),
+	);
 	Log.info({indent: false, logLevel});
 	Log.info(
 		{indent: false, logLevel},

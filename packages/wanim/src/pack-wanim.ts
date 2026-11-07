@@ -9,6 +9,7 @@ import {
 } from './crypto';
 import type {WanimAtlas, WanimManifest, WanimSprite} from './format';
 import {
+	WANIM_FLAG_CUSTOM_KEY,
 	WANIM_HEADER_LENGTH,
 	WANIM_MAGIC,
 	WANIM_NONCE_PREFIX_LENGTH,
@@ -16,6 +17,7 @@ import {
 	WANIM_TAG_LENGTH,
 	WANIM_VERSION,
 } from './format';
+import {WANIM_OFFICIAL_KEY} from './official-key';
 
 // Every GPU that Android and iOS devices ship with supports at least this size
 const MAX_ATLAS_SIZE = 4096;
@@ -39,7 +41,8 @@ export type PackWanimOptions = {
 	// PNG files, in playback order
 	framePaths: string[];
 	fps: number;
-	key: string;
+	// A key of its own for this file. If `null`, the official key is used.
+	key: string | null;
 	compositionId: string | null;
 	// Size limit of an atlas. By default 2048, or 4096 for frames larger than 1024.
 	atlasSize: number | null;
@@ -59,7 +62,7 @@ export const packWanim = async ({
 	atlasSize,
 	onProgress,
 }: PackWanimOptions): Promise<PackWanimResult> => {
-	const masterKey = parseWanimKey(key);
+	const masterKey = parseWanimKey(key ?? WANIM_OFFICIAL_KEY);
 	if (framePaths.length === 0) {
 		throw new Error('Cannot create a .wanim file without frames');
 	}
@@ -302,6 +305,7 @@ export const packWanim = async ({
 	const view = new DataView(header.buffer);
 	header.set(WANIM_MAGIC);
 	view.setUint16(8, WANIM_VERSION, true);
+	view.setUint16(10, key === null ? 0 : WANIM_FLAG_CUSTOM_KEY, true);
 	view.setUint32(12, manifestBytes.length + WANIM_TAG_LENGTH, true);
 	header.set(salt, 16);
 	header.set(noncePrefix, 16 + WANIM_SALT_LENGTH);

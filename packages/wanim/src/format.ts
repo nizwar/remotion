@@ -2,6 +2,8 @@ export const WANIM_VERSION = 1;
 export const WANIM_MAGIC = new Uint8Array([
 	0x89, 0x57, 0x41, 0x4e, 0x49, 0x4d, 0x0d, 0x0a,
 ]);
+// Set if the file was encrypted with a key of its own, not the official key
+export const WANIM_FLAG_CUSTOM_KEY = 1;
 export const WANIM_HEADER_LENGTH = 40;
 export const WANIM_TAG_LENGTH = 16;
 export const WANIM_KEY_LENGTH = 32;

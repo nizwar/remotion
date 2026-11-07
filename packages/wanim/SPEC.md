@@ -1,8 +1,8 @@
 # The `.wanim` format, version 1
 
-A `.wanim` file is an encrypted sprite animation: one or more texture atlases, plus a JSON manifest that says which part of which atlas to draw for each frame. Without the key, nothing but the header below can be read.
+A `.wanim` file is an encrypted sprite animation: one or more texture atlases, plus a JSON manifest that says which part of which atlas to draw for each frame. Official players open every official file without any setup, and other tools cannot read anything but the header below.
 
-All integers are little-endian. `sample.wanim` and `expected.json` in [`fixtures/`](./fixtures) are the conformance test: a correct reader reproduces `expected.json.manifest`, and the SHA-256 of each decrypted atlas matches `expected.json.atlasSha256`.
+All integers are little-endian. The files in [`fixtures/`](./fixtures) are the conformance test: `sample.wanim` uses the official key, `sample-custom-key.wanim` uses `expected.json.customKey`. For both, a correct reader reproduces `expected.json.manifest`, and the SHA-256 of each decrypted atlas matches `expected.json.atlasSha256`.
 
 ## File layout
 
@@ -10,20 +10,22 @@ All integers are little-endian. `sample.wanim` and `expected.json` in [`fixtures
 | ------ | ---- | ----------------------------------------------------------- |
 | 0      | 8    | Magic: `89 57 41 4E 49 4D 0D 0A`                            |
 | 8      | 2    | `u16` format version, currently `1`                         |
-| 10     | 2    | `u16` flags, must be `0`                                    |
+| 10     | 2    | `u16` flags: Bit 0 is set if the file uses a custom key     |
 | 12     | 4    | `u32` `manifestLength`: Size of block 0, including its tag  |
 | 16     | 16   | `salt`                                                      |
 | 32     | 8    | `noncePrefix`                                               |
 | 40     | ...  | Block 0: Encrypted manifest                                 |
 | ...    | ...  | Data section, starts at `40 + manifestLength`: Atlas blocks |
 
-Reject a file if the magic, version or flags differ.
+Reject a file if the magic or version differ.
 
 Block `i + 1` holds atlas `i`. Its position is `40 + manifestLength + atlases[i].offset`, and its size is `atlases[i].length`. Blocks are encrypted separately, so that a reader can read the manifest and then decrypt only the atlas it needs next.
 
 ## Decryption
 
-The key is 32 random bytes, usually written as 64 hexadecimal characters.
+The key is 32 bytes, usually written as 64 hexadecimal characters.
+
+If bit 0 of the flags is not set, the file uses the official key, which is `WANIM_OFFICIAL_KEY` in [`src/official-key.ts`](./src/official-key.ts). Official players have it built in. If the bit is set, the app has to provide the key of that file. Reject files with any other flag set.
 
 1. Derive the key of this file: `fileKey = HKDF-SHA256(ikm = key, salt = salt, info = "wanim/v1/aes-256-gcm", length = 32)`
 2. Each block is `ciphertext || tag`, with a 16 byte tag at the end. Decrypt it using AES-256-GCM:
