@@ -25,7 +25,7 @@ Block `i + 1` holds atlas `i`. Its position is `40 + manifestLength + atlases[i]
 
 The key is 32 bytes, usually written as 64 hexadecimal characters.
 
-If bit 0 of the flags is not set, the file uses the official key, which is `WANIM_OFFICIAL_KEY` in [`src/official-key.ts`](./src/official-key.ts). Official players have it built in. If the bit is set, the app has to provide the key of that file. Reject files with any other flag set.
+If bit 0 of the flags is not set, the file uses the official key, which every official player has built in. Its source is `packages/wanim/src/official-key.ts` in the Remotion fork. If the bit is set, the app has to provide the key of that file. Reject files with any other flag set.
 
 1. Derive the key of this file: `fileKey = HKDF-SHA256(ikm = key, salt = salt, info = "wanim/v1/aes-256-gcm", length = 32)`
 2. Each block is `ciphertext || tag`, with a 16 byte tag at the end. Decrypt it using AES-256-GCM:
