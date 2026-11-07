@@ -130,6 +130,10 @@ const isValidOutName = ({
 		);
 	}
 
+	if (renderMode === 'wanim' && extension !== 'wanim') {
+		throw new Error('The output name must end in .wanim');
+	}
+
 	if (renderMode === 'sequence') {
 		if (extension !== null) {
 			throw new Error('The image sequence folder must not have an extension');

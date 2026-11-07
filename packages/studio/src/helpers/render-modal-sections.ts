@@ -34,6 +34,10 @@ export const useRenderModalSections = (
 			return ['general', 'data', 'picture', 'environment', 'advanced'];
 		}
 
+		if (renderMode === 'wanim') {
+			return ['general', 'data', 'picture', 'environment', 'advanced'];
+		}
+
 		if (renderMode === 'sequence') {
 			return [
 				'general',

@@ -135,6 +135,8 @@ type RenderJobDynamicFields =
 			concurrency: number;
 			startFrame: number;
 			endFrame: number;
+			// If not null, the frames get packed into a .wanim file playing at this rate
+			wanimFps: number | null;
 			offthreadVideoCacheSizeInBytes: number | null;
 			mediaCacheSizeInBytes: number | null;
 			preferredEffectBackend: PreferredEffectBackend;

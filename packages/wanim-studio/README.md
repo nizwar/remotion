@@ -12,6 +12,8 @@ bun run list                  # List all animations
 bun run export LoadingOrb     # Create out/LoadingOrb.wanim
 ```
 
+You can also export from the Studio: Click Render and choose the Wanim tab.
+
 Build the monorepo first using `bunx turbo run make` in the root.
 
 ## Sharing with others

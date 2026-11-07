@@ -35,7 +35,7 @@ export const WANIM_KEYGEN_COMMAND = 'keygen';
 export const WANIM_INSPECT_COMMAND = 'inspect';
 
 // Above this, a player can no longer keep all atlases on the GPU of a phone
-const GPU_BUDGET_IN_BYTES = 256 * 1024 * 1024;
+export const GPU_BUDGET_IN_BYTES = 256 * 1024 * 1024;
 
 const {
 	offthreadVideoCacheSizeInBytesOption,
@@ -72,7 +72,7 @@ const {
 } = BrowserSafeApis.options;
 
 // Not a `REMOTION_` variable on purpose: Those get exposed to the bundle.
-const getKey = (): string | null => {
+export const getWanimKey = (): string | null => {
 	const keyFile = (parsedCli as unknown as Record<string, unknown>)['key-file'];
 	if (typeof keyFile === 'string') {
 		return readFileSync(keyFile, 'utf8');
@@ -86,7 +86,7 @@ const renderWanim = async (
 	args: string[],
 	logLevel: LogLevel,
 ) => {
-	const key = getKey();
+	const key = getWanimKey();
 	const licenseKey = getLicenseKey();
 	const atlasSizeFlag = (parsedCli as unknown as Record<string, unknown>)[
 		'atlas-size'
@@ -421,7 +421,7 @@ const inspectWanim = (filePath: string | undefined, logLevel: LogLevel) => {
 
 	const file = new Uint8Array(readFileSync(filePath));
 	const header = readWanimHeader(file);
-	const key = getKey();
+	const key = getWanimKey();
 	if (header.customKey && key === null) {
 		Log.info(
 			{indent: false, logLevel},

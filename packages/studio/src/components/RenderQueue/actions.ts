@@ -133,6 +133,7 @@ export const addSequenceRenderJob = ({
 	mediaCacheSizeInBytes,
 	preferredEffectBackend,
 	licenseKey,
+	wanimFps,
 }: {
 	compositionId: string;
 	outName: string;
@@ -158,10 +159,12 @@ export const addSequenceRenderJob = ({
 	mediaCacheSizeInBytes: number | null;
 	preferredEffectBackend: PreferredEffectBackend;
 	licenseKey: string | null;
+	wanimFps: number | null;
 }) => {
 	return callApi('/api/render', {
 		compositionId,
 		type: 'sequence',
+		wanimFps,
 		outName,
 		imageFormat,
 		jpegQuality,

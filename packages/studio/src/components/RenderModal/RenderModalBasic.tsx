@@ -131,7 +131,8 @@ export const RenderModalBasic: React.FC<{
 
 	return (
 		<div style={container}>
-			{renderMode === 'still' || renderMode === 'sequence' ? (
+			{renderMode === 'wanim' ? null : renderMode === 'still' ||
+			  renderMode === 'sequence' ? (
 				<div style={optionRow}>
 					<div style={label}>Format</div>
 					<div style={rightRow}>

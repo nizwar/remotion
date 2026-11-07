@@ -14,6 +14,7 @@ import {printError} from '../print-error';
 import {initialAggregateRenderProgress} from '../progress-types';
 import {processStill} from './process-still';
 import {processVideoJob} from './process-video';
+import {processWanimJob} from './process-wanim';
 import type {StudioRenderJobFixedConfig} from './studio-render-job-fixed-config';
 
 let jobQueue: RenderJobWithCleanup[] = [];
@@ -77,6 +78,20 @@ const processJob = async ({
 			entryPoint,
 			onProgress,
 			addCleanupCallback,
+			fixedConfig,
+		});
+		return;
+	}
+
+	if (job.type === 'sequence' && job.wanimFps !== null) {
+		await processWanimJob({
+			job,
+			wanimFps: job.wanimFps,
+			remotionRoot,
+			entryPoint,
+			onProgress,
+			addCleanupCallback,
+			logLevel,
 			fixedConfig,
 		});
 		return;

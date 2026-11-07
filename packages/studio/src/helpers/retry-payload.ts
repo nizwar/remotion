@@ -145,7 +145,7 @@ export const makeRetryPayload = (job: RenderJob): RenderModalState => {
 			initialRepro: job.repro,
 			initialForSeamlessAacConcatenation: defaults.forSeamlessAacConcatenation,
 			defaulMetadata: job.metadata,
-			renderTypeOfLastRender: 'sequence',
+			renderTypeOfLastRender: job.wanimFps === null ? 'sequence' : 'wanim',
 			initialHardwareAcceleration: defaults.hardwareAcceleration,
 			initialSampleRate: defaults.sampleRate,
 			initialChromeMode: job.chromeMode,

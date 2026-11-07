@@ -7,7 +7,7 @@ import {BrowserSafeApis} from '@remotion/renderer/client';
 import type {RenderDefaults} from '@remotion/studio-shared';
 import type {renderMediaOnWeb} from '@remotion/web-renderer';
 
-type RenderMode = 'still' | 'video' | 'audio' | 'sequence';
+type RenderMode = 'still' | 'video' | 'audio' | 'sequence' | 'wanim';
 
 const shellQuote = (value: string) => {
 	return `'${value.replace(/'/g, "'\\''")}'`;
@@ -314,9 +314,14 @@ export const makeReadOnlyStudioRenderCommand = ({
 		compositionId,
 	});
 	const isStillRender = renderMode === 'still';
-	const isSequenceRender = renderMode === 'sequence';
+	const isWanimRender = renderMode === 'wanim';
+	const isSequenceRender = renderMode === 'sequence' || isWanimRender;
 	const hasCodecSpecificOptions = !isSequenceRender;
-	const commandType = isStillRender ? 'still' : 'render';
+	const commandType = isStillRender
+		? 'still'
+		: isWanimRender
+			? 'wanim render'
+			: 'render';
 	const command = getNpmRemotionCommandPrefix(remotionVersion);
 	const {options} = BrowserSafeApis;
 	const flags: string[] = [];
@@ -413,7 +418,9 @@ export const makeReadOnlyStudioRenderCommand = ({
 			),
 		]);
 
-		if (isSequenceRender) {
+		if (isWanimRender) {
+			// Always PNG, with no further image options
+		} else if (isSequenceRender) {
 			addBooleanFlag(flags, options.imageSequenceOption.cliFlag, true);
 			if (sequenceImageFormat !== 'jpeg') {
 				addFlagWithValue(

@@ -308,7 +308,8 @@ const RenderModal: React.FC<
 			initialAudioCodec: defaultConfigurationAudioCodec,
 			initialRenderType:
 				renderTypeOfLastRender === 'still' ||
-				renderTypeOfLastRender === 'sequence'
+				renderTypeOfLastRender === 'sequence' ||
+				renderTypeOfLastRender === 'wanim'
 					? renderTypeOfLastRender
 					: codecs.initialRenderType,
 		};
@@ -739,6 +740,7 @@ const RenderModal: React.FC<
 		(
 			options:
 				| {type: 'sequence'}
+				| {type: 'wanim'}
 				| {type: 'still'; imageFormat: StillImageFormat}
 				| {
 						type: 'render';
@@ -757,6 +759,8 @@ const RenderModal: React.FC<
 					const folderName = getStringBeforeSuffix(prev);
 					return folderName;
 				});
+			} else if (options.type === 'wanim') {
+				setOutName((prev) => `${getStringBeforeSuffix(prev)}.wanim`);
 			} else {
 				setOutName((prev) => {
 					const codecSuffix = BrowserSafeApis.getFileExtensionFromCodec(
@@ -1050,15 +1054,53 @@ const RenderModal: React.FC<
 		renderDefaults.publicLicenseKey,
 	]);
 
-	const onClickSequence = useCallback(() => {
-		setSidebarCollapsedState({left: null, right: 'expanded'});
-		persistSelectedOptionsSidebarPanel('renders');
-		optionsSidebarTabs.current?.selectRendersPanel();
-		dispatchIfMounted({type: 'start'});
-		addSequenceRenderJob({
-			compositionId: resolvedComposition.id,
+	const onClickSequence = useCallback(
+		(wanimFps: number | null) => {
+			setSidebarCollapsedState({left: null, right: 'expanded'});
+			persistSelectedOptionsSidebarPanel('renders');
+			optionsSidebarTabs.current?.selectRendersPanel();
+			dispatchIfMounted({type: 'start'});
+			addSequenceRenderJob({
+				compositionId: resolvedComposition.id,
+				outName,
+				imageFormat: wanimFps === null ? sequenceImageFormat : 'png',
+				scale,
+				logLevel,
+				concurrency,
+				endFrame,
+				jpegQuality,
+				startFrame,
+				delayRenderTimeout,
+				chromiumOptions,
+				envVariables: envVariablesArrayToObject(envVariables),
+				inputProps,
+				offthreadVideoCacheSizeInBytes,
+				disallowParallelEncoding,
+				multiProcessOnLinux,
+				beepOnFinish,
+				repro,
+				metadata,
+				chromeMode,
+				offthreadVideoThreads,
+				mediaCacheSizeInBytes,
+				preferredEffectBackend,
+				licenseKey: renderDefaults.publicLicenseKey,
+				wanimFps,
+			})
+				.then(() => {
+					dispatchIfMounted({type: 'succeed'});
+					setSelectedModal(null);
+				})
+				.catch(() => {
+					dispatchIfMounted({type: 'fail'});
+				});
+		},
+		[
+			setSidebarCollapsedState,
+			dispatchIfMounted,
+			resolvedComposition.id,
 			outName,
-			imageFormat: sequenceImageFormat,
+			sequenceImageFormat,
 			scale,
 			logLevel,
 			concurrency,
@@ -1067,56 +1109,22 @@ const RenderModal: React.FC<
 			startFrame,
 			delayRenderTimeout,
 			chromiumOptions,
-			envVariables: envVariablesArrayToObject(envVariables),
+			envVariables,
 			inputProps,
 			offthreadVideoCacheSizeInBytes,
 			disallowParallelEncoding,
 			multiProcessOnLinux,
 			beepOnFinish,
 			repro,
+			setSelectedModal,
 			metadata,
 			chromeMode,
 			offthreadVideoThreads,
 			mediaCacheSizeInBytes,
 			preferredEffectBackend,
-			licenseKey: renderDefaults.publicLicenseKey,
-		})
-			.then(() => {
-				dispatchIfMounted({type: 'succeed'});
-				setSelectedModal(null);
-			})
-			.catch(() => {
-				dispatchIfMounted({type: 'fail'});
-			});
-	}, [
-		setSidebarCollapsedState,
-		dispatchIfMounted,
-		resolvedComposition.id,
-		outName,
-		sequenceImageFormat,
-		scale,
-		logLevel,
-		concurrency,
-		endFrame,
-		jpegQuality,
-		startFrame,
-		delayRenderTimeout,
-		chromiumOptions,
-		envVariables,
-		inputProps,
-		offthreadVideoCacheSizeInBytes,
-		disallowParallelEncoding,
-		multiProcessOnLinux,
-		beepOnFinish,
-		repro,
-		setSelectedModal,
-		metadata,
-		chromeMode,
-		offthreadVideoThreads,
-		mediaCacheSizeInBytes,
-		preferredEffectBackend,
-		renderDefaults.publicLicenseKey,
-	]);
+			renderDefaults.publicLicenseKey,
+		],
+	);
 
 	useEffect(() => {
 		return () => {
@@ -1225,6 +1233,10 @@ const RenderModal: React.FC<
 			if (newRenderMode === 'sequence') {
 				setDefaultOutName({type: 'sequence'});
 			}
+
+			if (newRenderMode === 'wanim') {
+				setDefaultOutName({type: 'wanim'});
+			}
 		},
 		[
 			videoCodecForAudioTab,
@@ -1283,8 +1295,26 @@ const RenderModal: React.FC<
 				key: 'sequence',
 				selected: renderMode === 'sequence',
 			},
+			// The read-only Studio prints a command for the published CLI instead
+			...(readOnlyStudio
+				? []
+				: [
+						{
+							label: 'Wanim',
+							onClick: () => {
+								setRenderMode('wanim');
+							},
+							key: 'wanim',
+							selected: renderMode === 'wanim',
+						},
+					]),
 		];
-	}, [resolvedComposition?.durationInFrames, renderMode, setRenderMode]);
+	}, [
+		resolvedComposition?.durationInFrames,
+		renderMode,
+		setRenderMode,
+		readOnlyStudio,
+	]);
 
 	const outnameValidation = validateOutnameGui({
 		outName,
@@ -1460,7 +1490,9 @@ const RenderModal: React.FC<
 		if (renderMode === 'still') {
 			onClickStill();
 		} else if (renderMode === 'sequence') {
-			onClickSequence();
+			onClickSequence(null);
+		} else if (renderMode === 'wanim') {
+			onClickSequence(resolvedComposition.fps);
 		} else {
 			onClickVideo();
 		}
@@ -1472,6 +1504,7 @@ const RenderModal: React.FC<
 		readOnlyStudio,
 		renderDisabled,
 		renderMode,
+		resolvedComposition.fps,
 	]);
 
 	useEffect(() => {

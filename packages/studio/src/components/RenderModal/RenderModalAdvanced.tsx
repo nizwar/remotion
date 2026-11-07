@@ -16,7 +16,7 @@ import {NumberSetting} from './NumberSetting';
 import {OptionExplainerBubble} from './OptionExplainerBubble';
 import {RenderModalHr} from './RenderModalHr';
 
-export type RenderType = 'still' | 'video' | 'audio' | 'sequence';
+export type RenderType = 'still' | 'video' | 'audio' | 'sequence' | 'wanim';
 
 const container: React.CSSProperties = {
 	flex: 1,

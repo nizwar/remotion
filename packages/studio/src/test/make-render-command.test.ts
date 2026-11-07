@@ -194,6 +194,20 @@ test('Should generate still command and omit default flags', () => {
 	expect(command).not.toContain('--frames=');
 });
 
+test('Should generate a wanim command without image sequence flags', () => {
+	const command = makeReadOnlyStudioRenderCommand({
+		...getBaseInput(),
+		outName: 'out/sprite.wanim',
+		renderMode: 'wanim',
+	});
+
+	expect(command).toContain('remotion wanim render');
+	expect(command).toContain('sprite.wanim');
+	expect(command).not.toContain('--sequence');
+	expect(command).not.toContain('--image-format');
+	expect(command).not.toContain('--codec=');
+});
+
 test('Should include custom bitrate and audio codec flags', () => {
 	const command = makeReadOnlyStudioRenderCommand({
 		...getBaseInput(),

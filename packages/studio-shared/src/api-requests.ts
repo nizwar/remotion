@@ -220,6 +220,7 @@ type AddRenderRequestDynamicFields =
 			concurrency: number;
 			startFrame: number;
 			endFrame: number;
+			wanimFps: number | null;
 			disallowParallelEncoding: boolean;
 			repro: boolean;
 			chromeMode: ChromeMode;
