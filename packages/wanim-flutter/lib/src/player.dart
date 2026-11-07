@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -168,7 +169,7 @@ class _WanimPlayerState extends State<WanimPlayer>
   void initState() {
     super.initState();
     final state = WidgetsBinding.instance.lifecycleState;
-    _appResumed = state == null || state == AppLifecycleState.resumed;
+    _appResumed = state == null || _isOnScreen(state);
     WidgetsBinding.instance.addObserver(this);
     _attachController(_controller);
     _showCurrentFrame();
@@ -241,9 +242,25 @@ class _WanimPlayerState extends State<WanimPlayer>
     _updateTicker();
   }
 
+  // A desktop window that lost focus is `inactive` but stays visible. On phones,
+  // `inactive` means that the app is on its way out or covered by the system.
+  bool _isOnScreen(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      return true;
+    }
+
+    final isDesktop = switch (defaultTargetPlatform) {
+      TargetPlatform.macOS ||
+      TargetPlatform.windows ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
+    return isDesktop && state == AppLifecycleState.inactive;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _appResumed = state == AppLifecycleState.resumed;
+    _appResumed = _isOnScreen(state);
     _updateTicker();
   }
 

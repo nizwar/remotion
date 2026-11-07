@@ -68,7 +68,10 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
     setState(() => _running = true);
     final file = (await rootBundle.load('assets/demo.wanim')).buffer
         .asUint8List();
-    await _benchmarkLoad(file);
+    for (var run = 1; run <= 3; run++) {
+      await _benchmarkLoad(file, run);
+    }
+
     await _benchmarkCrypto();
     for (final players in [1, 4, 16, 36]) {
       await _benchmarkFrames(file, players: players, streaming: false);
@@ -80,7 +83,7 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
     }
   }
 
-  Future<void> _benchmarkLoad(Uint8List file) async {
+  Future<void> _benchmarkLoad(Uint8List file, int run) async {
     final gaps = _GapMonitor()..start();
     final clock = Stopwatch()..start();
     final animation = await WanimAnimation.load(file);
@@ -88,6 +91,7 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
     gaps.stop();
     _report({
       'test': 'load',
+      'run': run,
       'fileBytes': file.length,
       'gpuBytes': animation.manifest.gpuBytes,
       'ms': clock.elapsedMilliseconds,

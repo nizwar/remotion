@@ -949,4 +949,35 @@ void main() {
     expect(failure, isNull);
     expect(animation.isResident, isTrue);
   });
+
+  testWidgets('keeps playing in an unfocused desktop window', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final animation = (await tester.runAsync(
+      () => WanimAnimation.load(fixture('sample.wanim')),
+    ))!;
+    addTearDown(animation.dispose);
+    final controller = WanimController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: WanimPlayer(animation: animation, controller: controller),
+      ),
+    );
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    final before = controller.position;
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(controller.position, greaterThan(before));
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump();
+    final hidden = controller.position;
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(controller.position, hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    debugDefaultTargetPlatformOverride = null;
+  });
 }
