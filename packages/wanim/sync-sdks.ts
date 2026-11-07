@@ -5,7 +5,10 @@ import path from 'node:path';
 
 const sdkRoot =
 	process.env.WANIM_SDK_DIR ??
-	path.join(process.env.HOME as string, 'Documents/Works/WBlue/WLive/WAnim');
+	path.join(
+		process.env.HOME as string,
+		'Documents/Works/WBlue/WLive/native_version/wanim',
+	);
 
 if (!existsSync(sdkRoot)) {
 	throw new Error(

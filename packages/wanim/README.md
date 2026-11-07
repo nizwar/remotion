@@ -13,7 +13,7 @@ Remove the `^` character from the version number to use the exact version.
 
 ## Players
 
-The players for Swift, Kotlin and Flutter and the Wanim Preview app live in the private repository `WBlue-Indonesia/WAnim`, not in this monorepo. It is checked out at `~/Documents/Works/WBlue/WLive/WAnim`, and is a submodule of `WLive-Native` at `wanim/`.
+The players for Swift, Kotlin and Flutter and the Wanim Preview app live in the private repository `WBlue-Indonesia/WAnim`, not in this monorepo. It is a submodule of `WLive-Native`, checked out at `~/Documents/Works/WBlue/WLive/native_version/wanim`.
 
 `SPEC.md` and `fixtures/` here are the source of truth. After changing the format, run `bun run sync-sdks`, then run the tests of each player.
 

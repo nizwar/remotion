@@ -32,7 +32,7 @@ When adding or reviewing TypeScript parameters, React props, or type/interface m
 
 ## Wanim players
 
-`packages/wanim` and the Wanim tab of the Studio export `.wanim` files. The players that open them are not in this monorepo: They live in the private repository `WBlue-Indonesia/WAnim`, checked out at `~/Documents/Works/WBlue/WLive/WAnim`.
+`packages/wanim` and the Wanim tab of the Studio export `.wanim` files. The players that open them are not in this monorepo: They live in the private repository `WBlue-Indonesia/WAnim`, a submodule of `WLive-Native`, checked out at `~/Documents/Works/WBlue/WLive/native_version/wanim`.
 
 When a change touches the file format, the manifest, `packages/wanim/SPEC.md`, `packages/wanim/fixtures` or the official key:
 
