@@ -299,6 +299,7 @@
         "@remotion/studio-protocol": "workspace:*",
         "@remotion/studio-server": "workspace:*",
         "@remotion/studio-shared": "workspace:*",
+        "@remotion/wanim": "workspace:*",
         "dotenv": "17.3.1",
         "mediabunny": "catalog:",
         "minimist": "1.2.6",
@@ -2838,6 +2839,19 @@
         "@huggingface/transformers": "4.2.0",
       },
     },
+    "packages/wanim": {
+      "name": "@remotion/wanim",
+      "version": "4.0.541",
+      "dependencies": {
+        "pngjs": "7.0.0",
+      },
+      "devDependencies": {
+        "@remotion/eslint-config-internal": "workspace:*",
+        "@types/node": "catalog:",
+        "eslint": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/web-renderer": {
       "name": "@remotion/web-renderer",
       "version": "4.0.541",
@@ -4728,6 +4742,8 @@
     "@remotion/vercel": ["@remotion/vercel@workspace:packages/vercel"],
 
     "@remotion/video-matting": ["@remotion/video-matting@workspace:packages/video-matting"],
+
+    "@remotion/wanim": ["@remotion/wanim@workspace:packages/wanim"],
 
     "@remotion/web-renderer": ["@remotion/web-renderer@workspace:packages/web-renderer"],
 

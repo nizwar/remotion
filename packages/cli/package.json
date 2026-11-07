@@ -47,6 +47,7 @@
 		"@remotion/studio-shared": "workspace:*",
 		"@remotion/studio-server": "workspace:*",
 		"@remotion/studio": "workspace:*",
+		"@remotion/wanim": "workspace:*",
 		"dotenv": "17.3.1",
 		"mediabunny": "catalog:",
 		"minimist": "1.2.6",

@@ -98,6 +98,7 @@ export const listOfRemotionPackages = [
 	'@remotion/design',
 	'@remotion/studio-protocol',
 	'@remotion/light-leaks',
+	'@remotion/wanim',
 	'@remotion/mac-cursors',
 	'@remotion/maptiler',
 	'@remotion/rough-notation',

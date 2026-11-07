@@ -12,6 +12,12 @@ import {USE_COMMAND} from './elements/use';
 import {GPU_COMMAND} from './gpu';
 import {Log} from './log';
 import {VERSIONS_COMMAND} from './versions';
+import {
+	WANIM_COMMAND,
+	WANIM_INSPECT_COMMAND,
+	WANIM_KEYGEN_COMMAND,
+	WANIM_RENDER_COMMAND,
+} from './wanim';
 
 const packagejson = require('../package.json');
 
@@ -29,6 +35,14 @@ const cliOnlyOptions: Record<string, CommandHelpOption> = {
 	quiet: {
 		flag: '--quiet, -q',
 		description: 'Reduce console output.',
+	},
+	'key-file': {
+		flag: '--key-file <path>',
+		description: 'Read the key from a file instead of WANIM_KEY.',
+	},
+	'atlas-size': {
+		flag: '--atlas-size <pixels>',
+		description: 'Set the maximum atlas size, up to 4096.',
 	},
 };
 
@@ -532,6 +546,39 @@ export const cliCommandHelp = [
 			},
 			...options(['public-dir', 'log']),
 		],
+	},
+	{
+		path: [WANIM_COMMAND, WANIM_RENDER_COMMAND],
+		args: ' [entry-point] [composition-id] [out-name]',
+		description: 'Render a composition to an encrypted sprite animation.',
+		documentation: 'https://www.remotion.dev/docs/cli/wanim',
+		options: options([
+			'key-file',
+			'atlas-size',
+			'output',
+			'props',
+			'scale',
+			'frames',
+			'every-nth-frame',
+			'concurrency',
+			'gl',
+			'log',
+			'quiet',
+		]),
+	},
+	{
+		path: [WANIM_COMMAND, WANIM_KEYGEN_COMMAND],
+		args: '',
+		description: 'Print a new random key for .wanim files.',
+		documentation: 'https://www.remotion.dev/docs/cli/wanim',
+		options: [],
+	},
+	{
+		path: [WANIM_COMMAND, WANIM_INSPECT_COMMAND],
+		args: ' <file.wanim>',
+		description: 'Print the manifest of a .wanim file.',
+		documentation: 'https://www.remotion.dev/docs/cli/wanim',
+		options: options(['key-file', 'log']),
 	},
 	{
 		path: [GPU_COMMAND],

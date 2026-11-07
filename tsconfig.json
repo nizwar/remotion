@@ -280,6 +280,9 @@
 			"path": "./packages/light-leaks"
 		},
 		{
+			"path": "./packages/wanim"
+		},
+		{
 			"path": "./packages/whisper-webgpu"
 		},
 		{

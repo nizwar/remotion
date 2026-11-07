@@ -1,0 +1,46 @@
+{
+	"repository": {
+		"url": "https://github.com/remotion-dev/remotion/tree/main/packages/wanim"
+	},
+	"name": "@remotion/wanim",
+	"version": "4.0.541",
+	"description": "Pack rendered frames into encrypted .wanim sprite animations",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"module": "dist/esm/index.mjs",
+	"scripts": {
+		"lint": "eslint src",
+		"formatting": "oxfmt src --check",
+		"format": "oxfmt src",
+		"make": "tsc -d && bun --env-file=../.env.bundle bundle.ts",
+		"test": "bun test src/test"
+	},
+	"author": "Jonny Burger <jonny@remotion.dev>",
+	"contributors": [],
+	"license": "SEE LICENSE IN LICENSE.md",
+	"bugs": {
+		"url": "https://github.com/remotion-dev/remotion/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"pngjs": "7.0.0"
+	},
+	"devDependencies": {
+		"@remotion/eslint-config-internal": "workspace:*",
+		"@types/node": "catalog:",
+		"eslint": "catalog:",
+		"typescript": "catalog:"
+	},
+	"homepage": "https://www.remotion.dev/docs/wanim",
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"types": "./dist/index.d.ts",
+			"require": "./dist/index.js",
+			"module": "./dist/esm/index.mjs",
+			"import": "./dist/esm/index.mjs"
+		}
+	}
+}

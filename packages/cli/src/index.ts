@@ -60,6 +60,7 @@ import {
 	validateVersionsBeforeCommand,
 	versionsCommand,
 } from './versions';
+import {WANIM_COMMAND, wanimCommand} from './wanim';
 
 const {packageManagerOption, skipSkillsOption, versionFlagOption} =
 	BrowserSafeApis.options;
@@ -204,6 +205,8 @@ export const cli = async () => {
 				argv: process.argv.slice(2),
 				logLevel,
 			});
+		} else if (command === WANIM_COMMAND) {
+			await wanimCommand(remotionRoot, args, logLevel);
 		} else if (command === 'benchmark') {
 			await benchmarkCommand(remotionRoot, args, logLevel);
 		} else {

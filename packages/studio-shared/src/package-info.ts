@@ -100,6 +100,7 @@ const allPackages = [
 	'design',
 	'studio-protocol',
 	'light-leaks',
+	'wanim',
 	'mac-cursors',
 	'maptiler',
 	'rough-notation',
@@ -277,6 +278,7 @@ export const descriptions: {[key in Pkgs]: string | null} = {
 	'studio-protocol':
 		'Create Element payloads and request installation into Remotion Studio',
 	'light-leaks': 'Light leak effects for Remotion',
+	wanim: 'Pack rendered frames into encrypted .wanim sprite animations',
 	'mac-cursors': 'macOS cursor components for Remotion',
 	maptiler: 'MapTiler components for Remotion',
 	'rough-notation': 'Rough annotation primitives for Remotion',
@@ -397,6 +399,7 @@ export const installableMap: {[key in Pkgs]: boolean} = {
 		packageName: '@remotion/light-leaks',
 		releaseVersion: VERSION,
 	}),
+	wanim: false,
 	'mac-cursors': shouldReleasePackage({
 		packageName: '@remotion/mac-cursors',
 		releaseVersion: VERSION,
@@ -514,6 +517,7 @@ export const apiDocs: {[key in Pkgs]: string | null} = {
 	design: 'https://www.remotion.dev/design',
 	'studio-protocol': 'https://www.remotion.dev/docs/studio-protocol',
 	'light-leaks': 'https://www.remotion.dev/docs/light-leaks',
+	wanim: 'https://www.remotion.dev/docs/wanim',
 	'mac-cursors': 'https://www.remotion.dev/docs/mac-cursors',
 	maptiler: null,
 	'rough-notation': 'https://www.remotion.dev/docs/rough-notation',
