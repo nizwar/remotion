@@ -13,7 +13,7 @@ The first export downloads a headless Chrome.
 ## Commands
 
 ```bash
-npm run dev                  # Preview in Remotion Studio
+npm run dev                  # Preview in Remotion Studio, then open the printed link
 npm run list                 # List all animations
 npm run export LoadingOrb    # Create out/LoadingOrb.wanim
 ```

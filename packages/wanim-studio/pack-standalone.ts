@@ -37,7 +37,8 @@ writeFileSync(
 			private: true,
 			type: 'module',
 			scripts: {
-				dev: 'remotion studio',
+				// Published versions stop if detecting the open browser fails
+				dev: 'remotion studio --no-open',
 				list: 'remotion compositions src/index.ts',
 				export: 'node scripts/export.mjs',
 			},
