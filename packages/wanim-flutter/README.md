@@ -89,9 +89,9 @@ On a memory warning, the cache shrinks to the current atlas, and the animation s
 
 ## Decryption
 
-Blocks are decrypted by the native AES-GCM of the platform (`cryptography_flutter`), or by Web Crypto in a browser. Where the native implementation is missing or fails, and for blocks of 20 MB and more on Android, the pure Dart implementation runs in a background isolate. In a browser without a secure context, Web Crypto is not available, and decryption runs on the main thread.
+Blocks are decrypted by the native AES-GCM of the platform (`cryptography_flutter`), or by Web Crypto in a browser. Where the native implementation is missing or fails, the pure Dart implementation runs in a background isolate. In a browser without a secure context, Web Crypto is not available, and decryption runs on the main thread.
 
-The native call is a method channel call to the platform thread, which is also the thread of the UI isolate in current Flutter versions, so very large atlases can cost a frame. Atlases can be kept small with the `atlasSize` option of the packer.
+On Android, the native implementation runs synchronously on the thread of the UI isolate, so it stalls the UI for as long as it takes. It is only used for blocks up to 512 KB there, and larger blocks go to the isolate. That takes about 130 ms per MB on a mid-range phone, without costing frames. Files that are streamed on Android should keep their atlases small enough for that, using the `atlasSize` and compression options of the packer.
 
 ## Example
 

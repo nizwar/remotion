@@ -9,6 +9,12 @@ import 'exception.dart';
 import 'format.dart';
 
 const int _keyLength = 32;
+
+// The Android plugin decrypts synchronously on the platform thread, which is
+// also the thread of the UI isolate: Measured on a Snapdragon phone, 1 MB stalls
+// the UI for 11 ms and 4 MB for 35 ms. Larger blocks are slower in an isolate,
+// but cost no frames.
+const int _maxAndroidPluginLength = 512 * 1024;
 final List<int> _hkdfInfo = utf8.encode('wanim/v1/aes-256-gcm');
 
 /// Parses a key of 64 hexadecimal characters.
@@ -118,8 +124,9 @@ Future<Uint8List?> _decryptOffUiIsolate(WanimBlock block) async {
     return decryptWithPlatform(block);
   }
 
-  // Larger messages can crash the method channel on Android
-  final maxLength = CryptographyChannelQueue.defaultInstance.maxConcurrentSize;
+  final maxLength = defaultTargetPlatform == TargetPlatform.android
+      ? _maxAndroidPluginLength
+      : CryptographyChannelQueue.defaultInstance.maxConcurrentSize;
   if (FlutterCryptography.isPluginPresent &&
       block.cipherText.length < maxLength) {
     try {

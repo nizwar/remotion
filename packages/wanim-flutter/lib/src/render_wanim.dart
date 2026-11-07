@@ -5,6 +5,13 @@ import 'package:flutter/widgets.dart';
 
 import 'manifest.dart';
 
+// Half a texel, and a bit more because sampling exactly on the center of the
+// edge texel can read its neighbor on some GPUs
+const double _scaledInset = 0.5 + 1 / 64;
+
+// Layout in logical pixels leaves rounding errors in physical pixels
+const double _pixelTolerance = 1e-3;
+
 /// What a [WanimView] shows right now. Listeners are told when it changes,
 /// which is the only way that playback reaches the render tree.
 class WanimFrameState extends ChangeNotifier {
@@ -249,10 +256,27 @@ class RenderWanim extends RenderBox {
 
     // Compared in physical pixels: A sprite at logical size 1 on a screen with
     // a ratio of 3 is still magnified
-    final samplesAtOne =
-        _scaleX * _devicePixelRatio == 1 && _scaleY * _devicePixelRatio == 1;
-    _inset = samplesAtOne ? 0 : 0.5;
+    final oneToOne =
+        _isWhole(_scaleX * _devicePixelRatio, 1) &&
+        _isWhole(_scaleY * _devicePixelRatio, 1);
+    // Only read on layout, as paint has to stay free of tree walks. A box that
+    // moves without layout keeps its filter, which is at most a half pixel off.
+    final position = localToGlobal(Offset(_originX, _originY));
+    final onWholePixels =
+        oneToOne &&
+        _isWhole(position.dx * _devicePixelRatio, null) &&
+        _isWhole(position.dy * _devicePixelRatio, null);
+
+    // Some GPUs are not exact at texel centers: Linear filtering then mixes in
+    // a little of the neighboring texels, even if nothing is scaled
+    _paint.filterQuality = onWholePixels
+        ? ui.FilterQuality.none
+        : ui.FilterQuality.low;
+    _inset = oneToOne ? 0 : _scaledInset;
   }
+
+  static bool _isWhole(double value, int? expected) =>
+      (value - (expected ?? value.round())).abs() < _pixelTolerance;
 
   @override
   void paint(PaintingContext context, Offset offset) {

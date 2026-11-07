@@ -9,6 +9,14 @@ import 'package:wanim/wanim.dart';
 
 import 'support.dart';
 
+const double _inset = 0.5 + 1 / 64;
+const Rect _scaledSource = Rect.fromLTRB(
+  2 + _inset,
+  2 + _inset,
+  18 - _inset,
+  18 - _inset,
+);
+
 const Duration _frame = Duration(microseconds: 1000000 ~/ 12);
 
 Duration _middleOf(int frame) =>
@@ -48,16 +56,18 @@ Widget _sized(Widget child) =>
 PaintPattern _drawsSprite(Rect source, Rect destination) =>
     paints..drawImageRect(source: source, destination: destination);
 
-PaintPattern _drawsWith(BlendMode blendMode) =>
-    paints..something((method, arguments) {
-      if (method != #drawImageRect) {
-        return false;
-      }
+PaintPattern _drawsWith(
+  BlendMode blendMode, {
+  FilterQuality filterQuality = FilterQuality.none,
+}) => paints
+  ..something((method, arguments) {
+    if (method != #drawImageRect) {
+      return false;
+    }
 
-      final paint = arguments[3] as Paint;
-      return paint.blendMode == blendMode &&
-          paint.filterQuality == FilterQuality.low;
-    });
+    final paint = arguments[3] as Paint;
+    return paint.blendMode == blendMode && paint.filterQuality == filterQuality;
+  });
 
 void main() {
   void useRatioOne(WidgetTester tester) {
@@ -137,10 +147,40 @@ void main() {
     );
     expect(
       tester.renderObject(view()),
-      _drawsSprite(
-        const Rect.fromLTRB(2.5, 2.5, 17.5, 17.5),
-        const Rect.fromLTWH(8, 16, 32, 32),
+      _drawsSprite(_scaledSource, const Rect.fromLTWH(8, 16, 32, 32)),
+    );
+  });
+
+  testWidgets('filters only if the sprite is not on whole pixels', (
+    tester,
+  ) async {
+    useRatioOne(tester);
+    final animation = await _load(tester);
+    Future<void> pumpAt(double left, double size) => tester.pumpWidget(
+      Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: EdgeInsets.only(left: left),
+          child: SizedBox(
+            width: size,
+            height: size * 0.75,
+            child: WanimPlayer(key: ValueKey(left), animation: animation),
+          ),
+        ),
       ),
+    );
+
+    await pumpAt(10, 64);
+    expect(tester.renderObject(view()), _drawsWith(BlendMode.srcOver));
+    await pumpAt(10.5, 64);
+    expect(
+      tester.renderObject(view()),
+      _drawsWith(BlendMode.srcOver, filterQuality: FilterQuality.low),
+    );
+    await pumpAt(10, 128);
+    expect(
+      tester.renderObject(view()),
+      _drawsWith(BlendMode.srcOver, filterQuality: FilterQuality.low),
     );
   });
 
@@ -153,10 +193,7 @@ void main() {
     await tester.pumpWidget(_sized(WanimPlayer(animation: animation)));
     expect(
       tester.renderObject(view()),
-      _drawsSprite(
-        const Rect.fromLTRB(2.5, 2.5, 17.5, 17.5),
-        const Rect.fromLTWH(4, 8, 16, 16),
-      ),
+      _drawsSprite(_scaledSource, const Rect.fromLTWH(4, 8, 16, 16)),
     );
 
     tester.view.devicePixelRatio = 1;
@@ -387,7 +424,10 @@ void main() {
         ),
       );
     await tester.pump();
-    expect(tester.renderObject(view()), _drawsWith(BlendMode.src));
+    expect(
+      tester.renderObject(view()),
+      _drawsWith(BlendMode.src, filterQuality: FilterQuality.low),
+    );
 
     await tester.pumpWidget(
       WanimView(
@@ -398,7 +438,10 @@ void main() {
         devicePixelRatio: 1,
       ),
     );
-    expect(tester.renderObject(view()), _drawsWith(BlendMode.srcOver));
+    expect(
+      tester.renderObject(view()),
+      _drawsWith(BlendMode.srcOver, filterQuality: FilterQuality.low),
+    );
   });
 
   group('controller', () {

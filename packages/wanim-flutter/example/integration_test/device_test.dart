@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart' as hash;
 import 'package:cryptography_flutter/cryptography_flutter.dart';
@@ -109,23 +111,56 @@ void main() {
     });
   });
 
-  testWidgets('the GPU draws each frame as the source frame', (tester) async {
+  // What the fixture generator draws in each frame, on the canvas
+  (Rect, List<int>)? reference(int frame) {
+    if (frame < 4) {
+      return (
+        Rect.fromLTWH(4 + frame * 8.0, 8, 16, 16),
+        const [128, 20, 20, 128],
+      );
+    }
+
+    if (frame < 10) {
+      final width = frame < 8 ? 10 + (frame - 4) * 12.0 : 46.0;
+      return (Rect.fromLTWH(8, 30, width, 10), const [40, 120, 255, 255]);
+    }
+
+    return null;
+  }
+
+  // The macOS Impeller backend draws some pixels near the edges of a quad up to
+  // 8 levels too strong at some scales, whatever the inset and antialiasing.
+  // Android and iOS have no such pixels.
+  const macOSScaled = 8;
+
+  // Draws every frame at [scale] physical pixels per canvas pixel, and compares
+  // it with the flat colors. All tested scales put the quads on whole pixels,
+  // so every pixel has one correct value, including the outermost ones.
+  Future<void> checkFrames(
+    WidgetTester tester,
+    Uint8List file,
+    double scale,
+    int tolerance,
+  ) async {
     late WanimAnimation animation;
     await tester.runAsync(() async {
-      animation = await WanimAnimation.load(official);
+      animation = await WanimAnimation.load(file);
     });
     final controller = WanimController(autoplay: false);
     final ratio = tester.view.devicePixelRatio;
+    final width = (64 * scale).round();
+    final height = (48 * scale).round();
     await tester.pumpWidget(
       Center(
         child: SizedBox(
-          width: 64 / ratio,
-          height: 48 / ratio,
+          width: width / ratio,
+          height: height / ratio,
           child: WanimPlayer(animation: animation, controller: controller),
         ),
       ),
     );
 
+    var maxDifference = 0;
     for (var frame = 0; frame < 12; frame++) {
       controller.seek(
         Duration(microseconds: ((frame + 0.5) / 12 * 1e6).round()),
@@ -140,48 +175,55 @@ void main() {
       late Uint8List pixels;
       await tester.runAsync(() async {
         final image = await boundary.toImage(pixelRatio: ratio);
-        expect(image.width, 64);
-        expect(image.height, 48);
+        expect(image.width, width);
+        expect(image.height, height);
         pixels = (await image.toByteData())!.buffer.asUint8List();
         image.dispose();
       });
 
-      final Rect? rect;
-      final List<int>? color;
-      if (frame < 4) {
-        rect = Rect.fromLTWH(4 + frame * 8.0, 8, 16, 16);
-        color = const [128, 20, 20, 128];
-      } else if (frame < 10) {
-        rect = Rect.fromLTWH(
-          8,
-          30,
-          frame < 8 ? 10 + (frame - 4) * 12.0 : 46,
-          10,
-        );
-        color = const [40, 120, 255, 255];
-      } else {
-        rect = null;
-        color = null;
-      }
-
+      final expectedFrame = reference(frame);
+      final rect = expectedFrame?.$1;
+      final color = expectedFrame?.$2;
       final wrong = <String>[];
-      for (var y = 0; y < 48; y++) {
-        for (var x = 0; x < 64; x++) {
-          final inside = rect?.contains(Offset(x + 0.5, y + 0.5)) ?? false;
-          final index = (y * 64 + x) * 4;
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          final center = Offset(x + 0.5, y + 0.5) / scale;
+          final inside = rect?.contains(center) ?? false;
+          final index = (y * width + x) * 4;
           for (var channel = 0; channel < 4; channel++) {
             final want = inside ? color![channel] : 0;
-            if ((pixels[index + channel] - want).abs() > 2) {
+            final difference = (pixels[index + channel] - want).abs();
+            maxDifference = max(maxDifference, difference);
+            final allowed = inside && scale != 1 && Platform.isMacOS
+                ? macOSScaled
+                : tolerance;
+            if (difference > allowed) {
               wrong.add('$x,$y channel $channel: ${pixels[index + channel]}');
             }
           }
         }
       }
-      expect(wrong.take(5), isEmpty, reason: 'frame $frame');
+      expect(wrong.take(5), isEmpty, reason: 'frame $frame: ${wrong.length}');
     }
 
+    debugPrint('WANIM_PIXELS $scale: max difference $maxDifference');
     await tester.pumpWidget(const SizedBox());
     controller.dispose();
     animation.dispose();
-  });
+  }
+
+  for (final name in ['sample.wanim', 'sample-compressed.wanim']) {
+    for (final scale in [1.0, 2.0, 3.5, 0.5]) {
+      testWidgets('$name matches the source frames at ${scale}x', (
+        tester,
+      ) async {
+        await checkFrames(
+          tester,
+          await _asset(name),
+          scale,
+          scale == 1 ? 0 : 2,
+        );
+      });
+    }
+  }
 }

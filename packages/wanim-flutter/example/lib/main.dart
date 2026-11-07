@@ -5,6 +5,10 @@ import 'package:wanim/wanim.dart';
 import 'benchmark.dart';
 
 const bool _autoBenchmark = bool.fromEnvironment('WANIM_AUTOBENCH');
+const String _asset = String.fromEnvironment(
+  'WANIM_ASSET',
+  defaultValue: 'assets/demo.wanim',
+);
 
 void main() => runApp(const WanimExampleApp());
 
@@ -49,7 +53,7 @@ class _DemoPageState extends State<DemoPage> {
 
   Future<void> _load() async {
     try {
-      final data = await rootBundle.load('assets/demo.wanim');
+      final data = await rootBundle.load(_asset);
       final animation = await WanimAnimation.load(data.buffer.asUint8List());
       if (!mounted) {
         animation.dispose();

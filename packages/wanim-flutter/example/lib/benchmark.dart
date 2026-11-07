@@ -97,7 +97,14 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
   }
 
   Future<void> _benchmarkCrypto() async {
-    for (final size in [64 << 10, 1 << 20, 4 << 20, 16 << 20]) {
+    for (final size in [
+      64 << 10,
+      256 << 10,
+      512 << 10,
+      1 << 20,
+      4 << 20,
+      16 << 20,
+    ]) {
       final input = await compute(_encryptRandom, size);
       final block = WanimBlock(
         fileKey: input.key,

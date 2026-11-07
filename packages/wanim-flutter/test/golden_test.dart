@@ -51,13 +51,14 @@ void main() {
     double height, {
     BoxFit fit = BoxFit.contain,
     double pixelRatio = 1,
+    String file = 'sample.wanim',
   }) async {
     tester.view
       ..physicalSize = const Size(800, 600)
       ..devicePixelRatio = pixelRatio;
     addTearDown(tester.view.reset);
     await tester.runAsync(() async {
-      animation = await WanimAnimation.load(sample());
+      animation = await WanimAnimation.load(fixture(file));
     });
     addTearDown(animation.dispose);
     controller = WanimController(autoplay: false);
@@ -96,34 +97,39 @@ void main() {
     return result;
   }
 
-  testWidgets('each frame equals the source frame of the fixture', (
-    tester,
-  ) async {
-    await pumpPlayer(tester, _width.toDouble(), _height.toDouble());
-    for (var frame = 0; frame < 12; frame++) {
-      controller.seek(middleOf(frame));
-      await tester.pump();
-      final actual = await capture(tester);
-
-      final name = frame.toString().padLeft(2, '0');
-      final png = File('test/goldens/frame_$name.png').readAsBytesSync();
-      late Uint8List reference;
-      await tester.runAsync(() async {
-        final image = await decodePng(png);
-        reference = await pixels(image);
-        image.dispose();
-      });
-      expect(actual.length, reference.length);
-      expect(actual, reference, reason: 'frame $frame');
-
-      final expectedColored = _reference(frame);
-      expect(
-        actual.any((byte) => byte != 0),
-        expectedColored != null,
-        reason: 'frame $frame',
+  for (final file in ['sample.wanim', 'sample-compressed.wanim']) {
+    testWidgets('each frame of $file equals the source frame', (tester) async {
+      await pumpPlayer(
+        tester,
+        _width.toDouble(),
+        _height.toDouble(),
+        file: file,
       );
-    }
-  });
+      for (var frame = 0; frame < 12; frame++) {
+        controller.seek(middleOf(frame));
+        await tester.pump();
+        final actual = await capture(tester);
+
+        final name = frame.toString().padLeft(2, '0');
+        final png = File('test/goldens/frame_$name.png').readAsBytesSync();
+        late Uint8List reference;
+        await tester.runAsync(() async {
+          final image = await decodePng(png);
+          reference = await pixels(image);
+          image.dispose();
+        });
+        expect(actual.length, reference.length);
+        expect(actual, reference, reason: 'frame $frame');
+
+        final expectedColored = _reference(frame);
+        expect(
+          actual.any((byte) => byte != 0),
+          expectedColored != null,
+          reason: 'frame $frame',
+        );
+      }
+    });
+  }
 
   // Each sprite is one flat color. Any bleeding of the transparent gutter into
   // the quad, or fringes from filtering, shows up as another value.
@@ -145,15 +151,13 @@ void main() {
             final pixel = actual.sublist(index, index + 4);
             final center = Offset(x + 0.5, y + 0.5) / scale;
             final rect = reference?.rect;
-            if (rect != null && rect.deflate(1 / scale).contains(center)) {
+            if (rect != null && rect.contains(center)) {
               for (var channel = 0; channel < 4; channel++) {
                 if ((pixel[channel] - reference!.color[channel]).abs() > 1) {
                   wrong.add('inside at $x,$y: $pixel');
                 }
               }
-            } else if ((rect == null ||
-                    !rect.inflate(1 / scale).contains(center)) &&
-                pixel.any((channel) => channel != 0)) {
+            } else if (pixel.any((channel) => channel != 0)) {
               wrong.add('outside at $x,$y: $pixel');
             }
           }
