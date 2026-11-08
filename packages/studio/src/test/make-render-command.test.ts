@@ -119,6 +119,7 @@ const getBaseInput = (): Parameters<
 		sampleRate: 48000,
 		envVariables: {},
 		inputProps: {},
+		wanim: null,
 	};
 };
 
@@ -280,4 +281,30 @@ test('Should include advanced flags and env variables', () => {
 	expect(command).toContain('--beep-on-finish');
 	expect(command).toContain('--repro');
 	expect(command).toContain("--metadata='artist=Remotion'");
+});
+
+test('Should pass the layers format and frame rates of a wanim render', () => {
+	const command = makeReadOnlyStudioRenderCommand({
+		...getBaseInput(),
+		outName: 'out/sprite.wanim',
+		renderMode: 'wanim',
+		wanim: {format: 'layers', frameRate: 12, imageRate: 6},
+	});
+
+	expect(command).toContain('--layers');
+	expect(command).toContain("--frame-rate='12'");
+	expect(command).toContain("--image-rate='6'");
+});
+
+test('Should not pass --layers for SVGA, the extension decides', () => {
+	const command = makeReadOnlyStudioRenderCommand({
+		...getBaseInput(),
+		outName: 'out/sprite.svga',
+		renderMode: 'wanim',
+		wanim: {format: 'svga', frameRate: null, imageRate: null},
+	});
+
+	expect(command).toContain('sprite.svga');
+	expect(command).not.toContain('--layers');
+	expect(command).not.toContain('--frame-rate');
 });

@@ -1,4 +1,4 @@
-import type {WanimOptions} from '@remotion/studio-shared';
+import type {WanimFormat, WanimOptions} from '@remotion/studio-shared';
 import React, {useCallback, useMemo, useState} from 'react';
 import {LIGHT_TEXT} from '../../helpers/colors';
 import {Checkmark} from '../../icons/Checkmark';
@@ -24,7 +24,14 @@ export type WanimSize = {
 type SavedWanimSettings = {
 	size: WanimSize;
 	compression: WanimOptions['compression'];
+	// Missing in settings saved by older versions
+	format?: WanimFormat;
+	frameRate?: number | null;
+	imageRate?: number | null;
 };
+
+// Frame rates to choose from, if they are lower than the composition's
+const FRAME_RATES = [60, 50, 30, 25, 24, 20, 15, 12, 10, 8, 6, 5];
 
 const getStorageKey = (compositionId: string) =>
 	`remotion.wanim.${compositionId}`;
@@ -178,22 +185,152 @@ const NumberField: React.FC<{
 	);
 };
 
+const formatLabel = (fps: number) =>
+	Number.isInteger(fps) ? String(fps) : fps.toFixed(2);
+
 export const WanimSizeSetting: React.FC<{
 	readonly size: WanimSize;
 	readonly setSize: (size: WanimSize) => void;
 	readonly compression: WanimOptions['compression'];
 	readonly setCompression: (value: WanimOptions['compression']) => void;
+	readonly format: WanimFormat;
+	readonly setFormat: (value: WanimFormat) => void;
+	readonly frameRate: number | null;
+	readonly setFrameRate: (value: number | null) => void;
+	readonly imageRate: number | null;
+	readonly setImageRate: (value: number | null) => void;
 	readonly compositionWidth: number;
 	readonly compositionHeight: number;
+	readonly compositionFps: number;
 }> = ({
 	size,
 	setSize,
 	compression,
 	setCompression,
+	format,
+	setFormat,
+	frameRate,
+	setFrameRate,
+	imageRate,
+	setImageRate,
 	compositionWidth,
 	compositionHeight,
+	compositionFps,
 }) => {
 	const {mode} = size;
+
+	const formatItems = useMemo((): ComboboxValue[] => {
+		const formats: {id: WanimFormat; label: string}[] = [
+			{id: 'frames', label: 'Frames (.wanim)'},
+			{id: 'layers', label: 'Layers (.wanim v2)'},
+			{id: 'svga', label: 'SVGA (.svga)'},
+		];
+		return formats.map(
+			(item): ComboboxValue => ({
+				type: 'item',
+				id: item.id,
+				value: item.id,
+				label: item.label,
+				leftItem: format === item.id ? <Checkmark /> : null,
+				keyHint: null,
+				quickSwitcherLabel: null,
+				subMenu: null,
+				onClick: () => setFormat(item.id),
+			}),
+		);
+	}, [format, setFormat]);
+
+	const formatHint =
+		format === 'frames'
+			? 'One picture per frame. Opens in every Wanim player.'
+			: format === 'layers'
+				? 'Moving parts are stored once and moved by the player. Needs a player with version 2 support.'
+				: 'Layers in the open SVGA format. Not encrypted, plays in any SVGA player.';
+
+	// The playback rate, which is the composition's or lower
+	const effectiveFrameRate =
+		frameRate === null ? compositionFps : Math.min(frameRate, compositionFps);
+
+	const rateItems = useCallback(
+		({
+			selected,
+			below,
+			sameLabel,
+			onSelect,
+		}: {
+			selected: number | null;
+			below: number;
+			sameLabel: string;
+			onSelect: (value: number | null) => void;
+		}): ComboboxValue[] => {
+			const rates: (number | null)[] = [
+				null,
+				...FRAME_RATES.filter((rate) => rate < below),
+			];
+			return rates.map(
+				(rate): ComboboxValue => ({
+					type: 'item',
+					id: String(rate),
+					value: String(rate),
+					label: rate === null ? sameLabel : `${rate} fps`,
+					leftItem: selected === rate ? <Checkmark /> : null,
+					keyHint: null,
+					quickSwitcherLabel: null,
+					subMenu: null,
+					onClick: () => onSelect(rate),
+				}),
+			);
+		},
+		[],
+	);
+
+	const frameRateItems = useMemo(
+		() =>
+			rateItems({
+				selected: frameRate,
+				below: compositionFps,
+				sameLabel: `${formatLabel(compositionFps)} fps (composition)`,
+				onSelect: (rate) => {
+					setFrameRate(rate);
+					// Pictures cannot change more often than frames
+					if (rate !== null && imageRate !== null && imageRate >= rate) {
+						setImageRate(null);
+					}
+				},
+			}),
+		[
+			compositionFps,
+			frameRate,
+			imageRate,
+			rateItems,
+			setFrameRate,
+			setImageRate,
+		],
+	);
+
+	const imageRateItems = useMemo(
+		() =>
+			rateItems({
+				selected: imageRate,
+				below: effectiveFrameRate,
+				sameLabel: 'Every frame',
+				onSelect: setImageRate,
+			}),
+		[effectiveFrameRate, imageRate, rateItems, setImageRate],
+	);
+
+	const frameRateHint =
+		frameRate === null
+			? 'Every frame of the composition'
+			: `Same duration with ${Math.round((effectiveFrameRate / compositionFps) * 100)}% of the frames`;
+	const imageRateHint =
+		imageRate === null
+			? format === 'frames'
+				? 'Each frame gets its own picture'
+				: 'Changing parts get a new picture in every frame'
+			: format === 'frames'
+				? `A new picture ${imageRate} times per second, held in between`
+				: `Moves stay smooth, changing parts get a new picture ${imageRate} times per second`;
 
 	const fromScale = useCallback(
 		(scale: number) => {
@@ -335,6 +472,17 @@ export const WanimSizeSetting: React.FC<{
 	return (
 		<>
 			<div style={optionRow}>
+				<div style={label}>Format</div>
+				<div style={rightRow}>
+					<Combobox
+						values={formatItems}
+						selectedId={format}
+						aria-label="Format"
+					/>
+				</div>
+			</div>
+			<div style={hintStyle}>{formatHint}</div>
+			<div style={optionRow}>
 				<div style={label}>Size</div>
 				<div style={rightRow}>
 					<Combobox values={modeItems} selectedId={mode} aria-label="Size" />
@@ -392,6 +540,28 @@ export const WanimSizeSetting: React.FC<{
 					)}
 				</>
 			)}
+			<div style={optionRow}>
+				<div style={label}>Frame rate</div>
+				<div style={rightRow}>
+					<Combobox
+						values={frameRateItems}
+						selectedId={String(frameRate)}
+						aria-label="Frame rate"
+					/>
+				</div>
+			</div>
+			<div style={hintStyle}>{frameRateHint}</div>
+			<div style={optionRow}>
+				<div style={label}>Image rate</div>
+				<div style={rightRow}>
+					<Combobox
+						values={imageRateItems}
+						selectedId={String(imageRate)}
+						aria-label="Image rate"
+					/>
+				</div>
+			</div>
+			<div style={hintStyle}>{imageRateHint}</div>
 			<div style={optionRow}>
 				<div style={label}>Compression</div>
 				<div style={rightRow}>

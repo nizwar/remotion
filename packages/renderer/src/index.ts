@@ -181,6 +181,7 @@ import {internalCombineChunks} from './combine-chunks';
 import {makeFileExecutableIfItIsNot} from './compositor/make-file-executable';
 import {defaultOnLog} from './default-on-log';
 import {internalEnsureBrowser} from './ensure-browser';
+import {makePage} from './make-page';
 import type {AudioCodec} from './options/audio-codec';
 import {
 	getDefaultAudioCodec,
@@ -191,6 +192,8 @@ import {
 import {DEFAULT_RENDER_FRAMES_OFFTHREAD_VIDEO_THREADS} from './options/offthreadvideo-threads';
 import {printUsefulErrorMessage} from './print-useful-error-message';
 import {getShouldRenderAudio} from './render-has-audio';
+import {handleBrowserCrash} from './replace-browser';
+import {seekToFrame} from './seek-to-frame';
 import {toMegabytes} from './to-megabytes';
 import {validatePuppeteerTimeout} from './validate-puppeteer-timeout';
 import {validateBitrate} from './validate-videobitrate';
@@ -295,6 +298,10 @@ export const RenderInternals = {
 	canConcatAudioSeamlessly,
 	internalCombineChunks,
 	defaultOnLog,
+	// Used to capture the layers of a .wanim or .svga file
+	makePage,
+	seekToFrame,
+	handleBrowserCrash,
 };
 
 // Warn of potential performance issues with Apple Silicon (M1 chip under Rosetta)

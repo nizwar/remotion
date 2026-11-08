@@ -1,5 +1,6 @@
 import type {AudioCodec, Codec, StillImageFormat} from '@remotion/renderer';
 import {BrowserSafeApis} from '@remotion/renderer/client';
+import type {WanimFormat} from '@remotion/studio-shared';
 import type {RenderType} from './RenderModalAdvanced';
 
 const invalidCharacters = ['?', '*', '+', ':', '%'];
@@ -37,6 +38,7 @@ export const validateOutnameGui = ({
 	renderMode,
 	stillImageFormat,
 	separateAudioTo,
+	wanimFormat,
 }: {
 	outName: string;
 	codec: Codec;
@@ -44,6 +46,8 @@ export const validateOutnameGui = ({
 	renderMode: RenderType;
 	stillImageFormat: StillImageFormat | null;
 	separateAudioTo: string | null;
+	// Only read if `renderMode` is `wanim`
+	wanimFormat: WanimFormat | null;
 }): {valid: true} | {valid: false; error: Error} => {
 	try {
 		isValidOutName({
@@ -53,6 +57,7 @@ export const validateOutnameGui = ({
 			renderMode,
 			stillImageFormat,
 			separateAudioTo,
+			wanimFormat,
 		});
 		return {valid: true};
 	} catch (err) {
@@ -67,6 +72,7 @@ const isValidOutName = ({
 	renderMode,
 	stillImageFormat,
 	separateAudioTo,
+	wanimFormat,
 }: {
 	outName: string;
 	codec: Codec;
@@ -74,6 +80,7 @@ const isValidOutName = ({
 	renderMode: RenderType;
 	stillImageFormat: StillImageFormat | null;
 	separateAudioTo: string | null;
+	wanimFormat: WanimFormat | null;
 }): void => {
 	const extension = BrowserSafeApis.getExtensionOfFilename(outName);
 	const prefix =
@@ -130,8 +137,11 @@ const isValidOutName = ({
 		);
 	}
 
-	if (renderMode === 'wanim' && extension !== 'wanim') {
-		throw new Error('The output name must end in .wanim');
+	if (renderMode === 'wanim') {
+		const expected = wanimFormat === 'svga' ? 'svga' : 'wanim';
+		if (extension !== expected) {
+			throw new Error(`The output name must end in .${expected}`);
+		}
 	}
 
 	if (renderMode === 'sequence') {

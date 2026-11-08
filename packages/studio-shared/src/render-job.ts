@@ -114,7 +114,16 @@ type RenderJobDynamicStatus =
 			};
 	  };
 
+export type WanimFormat = 'frames' | 'layers' | 'svga';
+
 export type WanimOptions = {
+	// `frames`: .wanim with one picture per frame. `layers`: .wanim version 2,
+	// moving parts are drawn with a matrix. `svga`: An unencrypted .svga file.
+	format: WanimFormat;
+	// Frames per second of the file, `null` for the frame rate of the composition
+	frameRate: number | null;
+	// How often a part may change its look, `null` for every frame
+	imageRate: number | null;
 	fps: number;
 	width: number;
 	height: number;

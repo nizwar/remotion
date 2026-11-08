@@ -4,6 +4,7 @@ import type {
 	RenderStillOptions,
 } from '@remotion/renderer';
 import {BrowserSafeApis} from '@remotion/renderer/client';
+import type {WanimOptions} from '@remotion/studio-shared';
 import type {RenderDefaults} from '@remotion/studio-shared';
 import type {renderMediaOnWeb} from '@remotion/web-renderer';
 
@@ -249,6 +250,8 @@ type ReadOnlyStudioRenderCommandInput = RenderMediaCommandOptions &
 		sampleRate: number;
 		envVariables: Record<string, string>;
 		inputProps: Record<string, unknown>;
+		// Only read for `renderMode: 'wanim'`
+		wanim: Pick<WanimOptions, 'format' | 'frameRate' | 'imageRate'> | null;
 	};
 
 export const makeReadOnlyStudioRenderCommand = ({
@@ -308,6 +311,7 @@ export const makeReadOnlyStudioRenderCommand = ({
 	sampleRate,
 	envVariables,
 	inputProps,
+	wanim,
 }: ReadOnlyStudioRenderCommandInput) => {
 	const serveUrl = normalizeServeUrlForRenderCommand({
 		locationHref,
@@ -419,7 +423,11 @@ export const makeReadOnlyStudioRenderCommand = ({
 		]);
 
 		if (isWanimRender) {
-			// Always PNG, with no further image options
+			// Always PNG, with no further image options. SVGA follows from the
+			// extension.
+			addBooleanFlag(flags, 'layers', wanim?.format === 'layers');
+			addFlagWithValue(flags, 'frame-rate', wanim?.frameRate);
+			addFlagWithValue(flags, 'image-rate', wanim?.imageRate);
 		} else if (isSequenceRender) {
 			addBooleanFlag(flags, options.imageSequenceOption.cliFlag, true);
 			if (sequenceImageFormat !== 'jpeg') {

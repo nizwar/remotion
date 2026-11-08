@@ -18,7 +18,7 @@ import type {
 	UiOpenGlOptions,
 } from '@remotion/studio-shared';
 import {getDefaultOutLocation} from '@remotion/studio-shared';
-import type {WanimOptions} from '@remotion/studio-shared';
+import type {WanimFormat, WanimOptions} from '@remotion/studio-shared';
 import React, {
 	useCallback,
 	useContext,
@@ -370,7 +370,9 @@ const RenderModal: React.FC<
 			compositionName: resolvedComposition.id,
 			defaultExtension:
 				initialRenderType === 'wanim'
-					? 'wanim'
+					? loadWanimSettings(resolvedComposition.id)?.format === 'svga'
+						? 'svga'
+						: 'wanim'
 					: initialRenderType === 'still'
 						? initialStillImageFormat
 						: isVideo
@@ -423,12 +425,38 @@ const RenderModal: React.FC<
 			retrySettings?.wanim?.compression ?? savedWanim?.compression ?? 'none',
 	);
 
+	const [wanimFormat, setWanimFormatState] = useState<WanimFormat>(
+		() => retrySettings?.wanim?.format ?? savedWanim?.format ?? 'frames',
+	);
+	const [wanimFrameRate, setWanimFrameRate] = useState<number | null>(
+		() =>
+			(retrySettings?.wanim
+				? retrySettings.wanim.frameRate
+				: savedWanim?.frameRate) ?? null,
+	);
+	const [wanimImageRate, setWanimImageRate] = useState<number | null>(
+		() =>
+			(retrySettings?.wanim
+				? retrySettings.wanim.imageRate
+				: savedWanim?.imageRate) ?? null,
+	);
+
 	useEffect(() => {
 		saveWanimSettings(resolvedComposition.id, {
 			size: wanimSize,
 			compression: wanimCompression,
+			format: wanimFormat,
+			frameRate: wanimFrameRate,
+			imageRate: wanimImageRate,
 		});
-	}, [resolvedComposition.id, wanimCompression, wanimSize]);
+	}, [
+		resolvedComposition.id,
+		wanimCompression,
+		wanimFormat,
+		wanimFrameRate,
+		wanimImageRate,
+		wanimSize,
+	]);
 	const [logLevel, setLogLevel] = useState(() => initialLogLevel);
 	const [disallowParallelEncoding, setDisallowParallelEncoding] = useState(
 		retrySettings?.disallowParallelEncoding ?? false,
@@ -781,7 +809,7 @@ const RenderModal: React.FC<
 		(
 			options:
 				| {type: 'sequence'}
-				| {type: 'wanim'}
+				| {type: 'wanim'; format: WanimFormat}
 				| {type: 'still'; imageFormat: StillImageFormat}
 				| {
 						type: 'render';
@@ -801,7 +829,8 @@ const RenderModal: React.FC<
 					return folderName;
 				});
 			} else if (options.type === 'wanim') {
-				setOutName((prev) => `${getStringBeforeSuffix(prev)}.wanim`);
+				const extension = options.format === 'svga' ? 'svga' : 'wanim';
+				setOutName((prev) => `${getStringBeforeSuffix(prev)}.${extension}`);
 			} else {
 				setOutName((prev) => {
 					const codecSuffix = BrowserSafeApis.getFileExtensionFromCodec(
@@ -815,6 +844,14 @@ const RenderModal: React.FC<
 			}
 		},
 		[deriveFinalAudioCodec],
+	);
+
+	const setWanimFormat = useCallback(
+		(format: WanimFormat) => {
+			setWanimFormatState(format);
+			setDefaultOutName({type: 'wanim', format});
+		},
+		[setDefaultOutName],
 	);
 
 	const setAudioCodec = useCallback(
@@ -1286,7 +1323,7 @@ const RenderModal: React.FC<
 			}
 
 			if (newRenderMode === 'wanim') {
-				setDefaultOutName({type: 'wanim'});
+				setDefaultOutName({type: 'wanim', format: wanimFormat});
 			}
 		},
 		[
@@ -1296,6 +1333,7 @@ const RenderModal: React.FC<
 			setDefaultOutName,
 			stillImageFormat,
 			videoCodecForVideoTab,
+			wanimFormat,
 		],
 	);
 
@@ -1374,6 +1412,7 @@ const RenderModal: React.FC<
 		renderMode,
 		stillImageFormat,
 		separateAudioTo: effectiveSeparateAudioTo,
+		wanimFormat,
 	});
 
 	const {tab, setTab, shownTabs} = useRenderModalSections(renderMode, codec);
@@ -1386,6 +1425,11 @@ const RenderModal: React.FC<
 		}
 
 		return makeReadOnlyStudioRenderCommand({
+			wanim: {
+				format: wanimFormat,
+				frameRate: wanimFrameRate,
+				imageRate: wanimImageRate,
+			},
 			remotionVersion: window.remotion_version,
 			locationHref: window.location.href,
 			compositionId: resolvedComposition.id,
@@ -1456,6 +1500,9 @@ const RenderModal: React.FC<
 			inputProps,
 		});
 	}, [
+		wanimFormat,
+		wanimFrameRate,
+		wanimImageRate,
 		audioBitrate,
 		audioCodec,
 		beepOnFinish,
@@ -1544,6 +1591,9 @@ const RenderModal: React.FC<
 			onClickSequence(null);
 		} else if (renderMode === 'wanim') {
 			onClickSequence({
+				format: wanimFormat,
+				frameRate: wanimFrameRate,
+				imageRate: wanimImageRate,
 				fps: resolvedComposition.fps,
 				width: wanimSize.width,
 				height: wanimSize.height,
@@ -1564,6 +1614,9 @@ const RenderModal: React.FC<
 		resolvedComposition.fps,
 		wanimSize,
 		wanimCompression,
+		wanimFormat,
+		wanimFrameRate,
+		wanimImageRate,
 	]);
 
 	useEffect(() => {
@@ -1798,6 +1851,13 @@ const RenderModal: React.FC<
 							setWanimSize={setWanimSize}
 							wanimCompression={wanimCompression}
 							setWanimCompression={setWanimCompression}
+							wanimFormat={wanimFormat}
+							setWanimFormat={setWanimFormat}
+							wanimFrameRate={wanimFrameRate}
+							setWanimFrameRate={setWanimFrameRate}
+							wanimImageRate={wanimImageRate}
+							setWanimImageRate={setWanimImageRate}
+							compositionFps={resolvedComposition.fps}
 						/>
 					) : tab === 'audio' ? (
 						<RenderModalAudio

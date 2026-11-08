@@ -9,8 +9,11 @@ import {BrowserSafeApis} from '@remotion/renderer/client';
 import {
 	generateWanimKey,
 	openWanim,
+	packSvga,
 	packWanim,
+	packWanimLayers,
 	readWanimHeader,
+	sampleWanimFrames,
 } from '@remotion/wanim';
 import {NoReactInternals} from 'remotion/no-react';
 import {defaultBrowserDownloadProgress} from './browser-download-bar';
@@ -28,6 +31,14 @@ import {createOverwriteableCliOutput} from './progress-bar';
 import {bundleOnCliOrTakeServeUrl} from './setup-cache';
 import {shouldUseNonOverlayingLogger} from './should-use-non-overlaying-logger';
 import {getOutputLocation} from './user-passed-output-location';
+import {renderWanimLayers} from './wanim-layers/render-layers';
+
+// `frames` stores one picture per frame, `layers` moving parts as layers
+export type WanimFormat = 'frames' | 'layers' | 'svga';
+
+const toMegabytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(1);
+const formatFps = (fps: number) =>
+	Number.isInteger(fps) ? String(fps) : fps.toFixed(2);
 
 export const WANIM_COMMAND = 'wanim';
 export const WANIM_RENDER_COMMAND = 'render';
@@ -108,6 +119,24 @@ const renderWanim = async (
 			`--compress must be "none", "balanced" or "small", got ${compressFlag}`,
 		);
 	}
+
+	const cliFlags = parsedCli as unknown as Record<string, unknown>;
+	const readRate = (name: string) => {
+		const value = cliFlags[name];
+		if (value === undefined) {
+			return null;
+		}
+
+		const rate = Number(value);
+		if (!(rate > 0)) {
+			throw new Error(`--${name} must be a positive number, got ${value}`);
+		}
+
+		return rate;
+	};
+
+	const frameRateFlag = readRate('frame-rate');
+	const imageRate = readRate('image-rate');
 
 	const {file, remainingArgs} = findEntryPoint({
 		args,
@@ -287,9 +316,13 @@ const renderWanim = async (
 		outputLocationFromUi: null,
 		compositionDefaultOutName: config.defaultOutName,
 	});
-	if (path.extname(outName) !== '.wanim') {
-		throw new Error(`The output must end in .wanim, got ${outName}`);
+	const extension = path.extname(outName);
+	if (extension !== '.wanim' && extension !== '.svga') {
+		throw new Error(`The output must end in .wanim or .svga, got ${outName}`);
 	}
+
+	const format: WanimFormat =
+		extension === '.svga' ? 'svga' : cliFlags.layers ? 'layers' : 'frames';
 
 	const absoluteOutputFile = path.resolve(process.cwd(), outName);
 	const overwrite = overwriteOption.getValue(commandLine, true).value;
@@ -299,11 +332,6 @@ const renderWanim = async (
 		);
 	}
 
-	const outputDir = await mkdtemp(path.join(os.tmpdir(), 'remotion-wanim-'));
-	registerCleanupJob('Delete rendered frames', () =>
-		RenderInternals.deleteDirectory(outputDir),
-	);
-
 	const progress = createOverwriteableCliOutput({
 		quiet,
 		cancelSignal: null,
@@ -312,85 +340,187 @@ const renderWanim = async (
 		logLevel,
 	});
 
-	await RenderInternals.internalRenderFrames({
-		imageFormat: 'png',
-		serializedInputPropsWithCustomSchema,
-		onFrameUpdate: (rendered) => {
-			progress.update(`Rendered ${rendered} frames`, false);
-		},
-		onStart: () => undefined,
-		onDownload: () => undefined,
-		cancelSignal: undefined,
-		outputDir,
-		webpackBundleOrServeUrl: urlOrBundle,
-		everyNthFrame,
-		envVariables,
+	const [firstFrame, lastFrame] = RenderInternals.getRealFrameRange(
+		config.durationInFrames,
 		frameRange,
-		frames: null,
-		outputFramesInSequence: false,
-		concurrency: RenderInternals.resolveConcurrency(
-			concurrencyOption.getValue(commandLine).value,
-		),
-		puppeteerInstance,
-		jpegQuality: RenderInternals.DEFAULT_JPEG_QUALITY,
-		timeoutInMilliseconds,
-		chromiumOptions,
-		scale,
-		browserExecutable,
-		port,
-		composition: config,
-		server,
-		indent: false,
-		// A .wanim file has no audio track
-		muted: true,
-		sampleRate: sampleRateOption.getValue(commandLine, config.defaultSampleRate)
-			.value,
-		onBrowserLog: null,
-		onFrameBuffer: null,
-		onFrame: null,
-		remotionSharedMemory: null,
-		logLevel,
-		serializedResolvedPropsWithCustomSchema:
-			NoReactInternals.serializeJSONWithSpecialTypes({
-				indent: undefined,
-				staticBase: null,
-				data: config.props,
-			}).serializedString,
-		offthreadVideoCacheSizeInBytes,
-		offthreadVideoThreads,
-		parallelEncodingEnabled: false,
-		binariesDirectory,
-		compositionStart: 0,
-		forSeamlessAacConcatenation: false,
-		onBrowserDownload,
-		onArtifact: null,
-		chromeMode,
-		imageSequencePattern: null,
-		mediaCacheSizeInBytes,
-		preferredEffectBackend,
-		onLog: RenderInternals.defaultOnLog,
+	);
+	// --every-nth-frame is the older way to lower the frame rate
+	const sampling = sampleWanimFrames({
+		firstFrame,
+		lastFrame,
+		fps: config.fps,
+		frameRate:
+			frameRateFlag ?? (everyNthFrame > 1 ? config.fps / everyNthFrame : null),
+		imageRate,
 	});
+	const concurrency = RenderInternals.resolveConcurrency(
+		concurrencyOption.getValue(commandLine).value,
+	);
+	const serializedResolvedPropsWithCustomSchema =
+		NoReactInternals.serializeJSONWithSpecialTypes({
+			indent: undefined,
+			staticBase: null,
+			data: config.props,
+		}).serializedString;
 
-	const framePaths = (await readdir(outputDir))
-		.filter((name) => name.endsWith('.png'))
-		.sort()
-		.map((name) => path.join(outputDir, name));
+	let output: Uint8Array;
+	let summary: string;
+	let gpuBytes: number | null = null;
+	if (format === 'frames') {
+		const outputDir = await mkdtemp(path.join(os.tmpdir(), 'remotion-wanim-'));
+		registerCleanupJob('Delete rendered frames', () =>
+			RenderInternals.deleteDirectory(outputDir),
+		);
+		// Frames that show the same image are rendered once
+		const uniqueFrames = [...new Set(sampling.imageFrames)].sort(
+			(a, b) => a - b,
+		);
+		await RenderInternals.internalRenderFrames({
+			imageFormat: 'png',
+			serializedInputPropsWithCustomSchema,
+			onFrameUpdate: (rendered) => {
+				progress.update(`Rendered ${rendered} frames`, false);
+			},
+			onStart: () => undefined,
+			onDownload: () => undefined,
+			cancelSignal: undefined,
+			outputDir,
+			webpackBundleOrServeUrl: urlOrBundle,
+			everyNthFrame: 1,
+			envVariables,
+			frameRange: null,
+			frames: uniqueFrames,
+			outputFramesInSequence: false,
+			concurrency,
+			puppeteerInstance,
+			jpegQuality: RenderInternals.DEFAULT_JPEG_QUALITY,
+			timeoutInMilliseconds,
+			chromiumOptions,
+			scale,
+			browserExecutable,
+			port,
+			composition: config,
+			server,
+			indent: false,
+			// A .wanim file has no audio track
+			muted: true,
+			sampleRate: sampleRateOption.getValue(
+				commandLine,
+				config.defaultSampleRate,
+			).value,
+			onBrowserLog: null,
+			onFrameBuffer: null,
+			onFrame: null,
+			remotionSharedMemory: null,
+			logLevel,
+			serializedResolvedPropsWithCustomSchema,
+			offthreadVideoCacheSizeInBytes,
+			offthreadVideoThreads,
+			parallelEncodingEnabled: false,
+			binariesDirectory,
+			compositionStart: 0,
+			forSeamlessAacConcatenation: false,
+			onBrowserDownload,
+			onArtifact: null,
+			chromeMode,
+			imageSequencePattern: null,
+			mediaCacheSizeInBytes,
+			preferredEffectBackend,
+			onLog: RenderInternals.defaultOnLog,
+		});
 
-	const {file: wanim, manifest} = await packWanim({
-		framePaths,
-		fps: config.fps / everyNthFrame,
-		key,
-		compositionId,
-		atlasSize,
-		canvas: null,
-		compression,
-		onProgress: (value) => {
-			progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
-		},
-	});
+		// File names are padded, so they sort like the frames
+		const files = (await readdir(outputDir))
+			.filter((name) => name.endsWith('.png'))
+			.sort()
+			.map((name) => path.join(outputDir, name));
+		const fileOf = new Map(
+			uniqueFrames.map((frame, index) => [frame, files[index] as string]),
+		);
+		const {file: wanim, manifest} = await packWanim({
+			framePaths: sampling.imageFrames.map(
+				(frame) => fileOf.get(frame) as string,
+			),
+			fps: sampling.fps,
+			key,
+			compositionId,
+			atlasSize,
+			canvas: null,
+			compression,
+			onProgress: (value) => {
+				progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
+			},
+		});
+		output = wanim;
+		gpuBytes = manifest.gpuBytes;
+		summary = `${manifest.frameCount} frames at ${formatFps(manifest.fps)} fps, ${manifest.sprites.length} sprites, ${manifest.atlases.length} atlases, ${toMegabytes(wanim.length)} MB on disk, ${toMegabytes(manifest.gpuBytes)} MB on the GPU`;
+	} else {
+		const animation = await renderWanimLayers({
+			puppeteerInstance,
+			server,
+			composition: config,
+			serializedInputPropsWithCustomSchema,
+			serializedResolvedPropsWithCustomSchema,
+			envVariables,
+			scale,
+			concurrency,
+			timeoutInMilliseconds,
+			chromiumOptions,
+			mediaCacheSizeInBytes,
+			preferredEffectBackend,
+			frames: sampling.frames,
+			imageFrames: sampling.imageFrames,
+			fps: sampling.fps,
+			outputTransform: [1, 0, 0, 1, 0, 0],
+			outputWidth: Math.round(config.width * scale),
+			outputHeight: Math.round(config.height * scale),
+			logLevel,
+			onProgress: ({stage, done, total}) => {
+				progress.update(
+					stage === 'describing'
+						? `Reading frames ${done}/${total}`
+						: `Capturing layers ${done}/${total}`,
+					false,
+				);
+			},
+			isCancelled: () => false,
+		});
+		if (format === 'layers') {
+			const {file: wanim, manifest} = packWanimLayers({
+				animation,
+				key,
+				compositionId,
+				atlasSize,
+				compression,
+				onProgress: (value) => {
+					progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
+				},
+			});
+			output = wanim;
+			gpuBytes = manifest.gpuBytes;
+			summary = `${manifest.frameCount} frames at ${formatFps(manifest.fps)} fps, ${manifest.sprites.length} layer pictures, ${(manifest.timeline.draws / manifest.frameCount).toFixed(1)} draws per frame, ${toMegabytes(wanim.length)} MB on disk, ${toMegabytes(manifest.gpuBytes)} MB on the GPU`;
+		} else {
+			if (key !== null) {
+				Log.warn(
+					{indent: false, logLevel},
+					'SVGA files cannot be encrypted, the key is not used.',
+				);
+			}
+
+			const svga = packSvga({animation, compression});
+			output = svga.file;
+			summary = `${animation.frames.length} frames at ${svga.fps} fps, ${svga.images} images, ${svga.sprites} sprites, ${toMegabytes(svga.file.length)} MB on disk`;
+			if (svga.fps !== sampling.fps) {
+				Log.warn(
+					{indent: false, logLevel},
+					`SVGA only supports whole frame rates, so this file plays at ${svga.fps} instead of ${formatFps(sampling.fps)} fps.`,
+				);
+			}
+		}
+	}
 
 	mkdirSync(path.dirname(absoluteOutputFile), {recursive: true});
-	writeFileSync(absoluteOutputFile, wanim);
+	writeFileSync(absoluteOutputFile, output);
 	progress.update('', true);
 
 	if (licenseKey !== null) {
@@ -413,16 +543,11 @@ const renderWanim = async (
 		{indent: false, logLevel},
 		chalk.blue(`+ ${path.relative(process.cwd(), absoluteOutputFile)}`),
 	);
-	Log.info(
-		{indent: false, logLevel},
-		chalk.gray(
-			`${manifest.frameCount} frames, ${manifest.sprites.length} sprites, ${manifest.atlases.length} atlases, ${(wanim.length / 1024 / 1024).toFixed(1)} MB on disk, ${(manifest.gpuBytes / 1024 / 1024).toFixed(1)} MB on the GPU`,
-		),
-	);
-	if (manifest.gpuBytes > GPU_BUDGET_IN_BYTES) {
+	Log.info({indent: false, logLevel}, chalk.gray(summary));
+	if (gpuBytes !== null && gpuBytes > GPU_BUDGET_IN_BYTES) {
 		Log.warn(
 			{indent: false, logLevel},
-			'This animation is too large to be kept on the GPU of a phone, so players have to stream atlases and may drop frames. Consider a lower --scale or --every-nth-frame=2.',
+			'This animation is too large to be kept on the GPU of a phone, so players have to stream atlases and may drop frames. Consider a lower --scale, a lower --frame-rate or --layers.',
 		);
 	}
 };
@@ -461,6 +586,18 @@ const printWanimHelp = (logLevel: LogLevel) => {
 	Log.info(
 		{indent: false, logLevel},
 		chalk.gray('Render a composition to an encrypted sprite animation.'),
+	);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'--layers stores moving parts once (version 2). An .svga output name writes an unencrypted SVGA file instead.',
+		),
+	);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'--frame-rate=<fps> keeps the duration with fewer frames. --image-rate=<fps> lets changing parts get a new picture less often.',
+		),
 	);
 	Log.info({indent: false, logLevel});
 	Log.info(

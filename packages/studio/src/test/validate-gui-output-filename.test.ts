@@ -10,6 +10,7 @@ test('Should catch dot after slash', () => {
 			renderMode: 'video',
 			stillImageFormat: 'png',
 			separateAudioTo: null,
+			wanimFormat: null,
 		}).valid,
 	).toBe(false);
 });
@@ -23,6 +24,7 @@ test('Should catch dot in front ', () => {
 			renderMode: 'video',
 			stillImageFormat: 'png',
 			separateAudioTo: null,
+			wanimFormat: null,
 		}).valid,
 	).toBe(false);
 });

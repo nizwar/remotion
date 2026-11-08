@@ -1,5 +1,5 @@
 import type {StillImageFormat, VideoImageFormat} from '@remotion/renderer';
-import type {WanimOptions} from '@remotion/studio-shared';
+import type {WanimFormat, WanimOptions} from '@remotion/studio-shared';
 import React from 'react';
 import {VERTICAL_SCROLLBAR_CLASSNAME} from '../Menu/is-menu-item';
 import type {SegmentedControlItem} from '../SegmentedControl';
@@ -33,6 +33,13 @@ export const RenderModalPicture: React.FC<{
 	readonly setWanimSize: (size: WanimSize) => void;
 	readonly wanimCompression: WanimOptions['compression'];
 	readonly setWanimCompression: (value: WanimOptions['compression']) => void;
+	readonly wanimFormat: WanimFormat;
+	readonly setWanimFormat: (value: WanimFormat) => void;
+	readonly wanimFrameRate: number | null;
+	readonly setWanimFrameRate: (value: number | null) => void;
+	readonly wanimImageRate: number | null;
+	readonly setWanimImageRate: (value: number | null) => void;
+	readonly compositionFps: number;
 }> = ({
 	renderMode,
 	scale,
@@ -49,6 +56,13 @@ export const RenderModalPicture: React.FC<{
 	setWanimSize,
 	wanimCompression,
 	setWanimCompression,
+	wanimFormat,
+	setWanimFormat,
+	wanimFrameRate,
+	setWanimFrameRate,
+	wanimImageRate,
+	setWanimImageRate,
+	compositionFps,
 }) => {
 	return (
 		<div style={container} className={VERTICAL_SCROLLBAR_CLASSNAME}>
@@ -86,8 +100,15 @@ export const RenderModalPicture: React.FC<{
 					setSize={setWanimSize}
 					compression={wanimCompression}
 					setCompression={setWanimCompression}
+					format={wanimFormat}
+					setFormat={setWanimFormat}
+					frameRate={wanimFrameRate}
+					setFrameRate={setWanimFrameRate}
+					imageRate={wanimImageRate}
+					setImageRate={setWanimImageRate}
 					compositionWidth={compositionWidth}
 					compositionHeight={compositionHeight}
+					compositionFps={compositionFps}
 				/>
 			) : (
 				<ScaleSetting
