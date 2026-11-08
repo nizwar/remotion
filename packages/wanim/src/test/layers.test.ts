@@ -481,7 +481,7 @@ test('svga sprites keep the order of every frame', () => {
 test('the version 2 fixtures match expected-layers.json', async () => {
 	const {readFileSync} = await import('node:fs');
 	const {createHash} = await import('node:crypto');
-	const dir = new URL('../../fixtures/', import.meta.url).pathname;
+	const dir = `${__dirname}/../../fixtures/`;
 	const expected = JSON.parse(
 		readFileSync(`${dir}expected-layers.json`, 'utf8'),
 	);
