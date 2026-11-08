@@ -1,26 +1,18 @@
-import {createHash, randomBytes} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {PNG} from 'pngjs';
 import type {WanimCompression} from './compress-atlas';
-import {encodePalettePng, posterize} from './compress-atlas';
 import {
-	concatBytes,
-	deriveFileKey,
-	encryptBlock,
-	parseWanimKey,
-} from './crypto';
+	encodePng,
+	encryptedLength,
+	shelfPack,
+	writeWanimFile,
+} from './container';
+import {parseWanimKey} from './crypto';
 import type {WanimCanvas} from './fit-frame';
 import {fitFrame} from './fit-frame';
 import type {WanimAtlas, WanimManifest, WanimSprite} from './format';
-import {
-	WANIM_FLAG_CUSTOM_KEY,
-	WANIM_HEADER_LENGTH,
-	WANIM_MAGIC,
-	WANIM_NONCE_PREFIX_LENGTH,
-	WANIM_SALT_LENGTH,
-	WANIM_TAG_LENGTH,
-	WANIM_VERSION,
-} from './format';
+import {WANIM_VERSION} from './format';
 import {WANIM_OFFICIAL_KEY} from './official-key';
 
 // Every GPU that Android and iOS devices ship with supports at least this size
@@ -73,7 +65,8 @@ export const packWanim = async ({
 	compression,
 	onProgress,
 }: PackWanimOptions): Promise<PackWanimResult> => {
-	const masterKey = parseWanimKey(key ?? WANIM_OFFICIAL_KEY);
+	// Fails early on an invalid key, before any frame is read
+	parseWanimKey(key ?? WANIM_OFFICIAL_KEY);
 	if (framePaths.length === 0) {
 		throw new Error('Cannot create a .wanim file without frames');
 	}
@@ -208,48 +201,34 @@ export const packWanim = async ({
 
 	// Shelves are filled in playback order: Neighboring frames share an atlas,
 	// so a player needs few texture switches and can predict the next atlas.
-	const pages: {width: number; height: number; rects: Rect[]}[] = [
-		{width: 0, height: 0, rects: []},
-	];
-	let cursorX = PADDING;
-	let cursorY = PADDING;
-	let shelfHeight = 0;
-	for (const rect of rects) {
-		if (cursorX + rect.width + PADDING > pageSize) {
-			cursorX = PADDING;
-			cursorY += shelfHeight + PADDING;
-			shelfHeight = 0;
-		}
-
-		if (cursorY + rect.height + PADDING > pageSize) {
-			pages.push({width: 0, height: 0, rects: []});
-			cursorX = PADDING;
-			cursorY = PADDING;
-			shelfHeight = 0;
-		}
-
-		const page = pages[pages.length - 1] as (typeof pages)[number];
-		rect.atlas = pages.length - 1;
-		rect.x = cursorX;
-		rect.y = cursorY;
-		page.rects.push(rect);
-		page.width = Math.max(page.width, cursorX + rect.width + PADDING);
-		page.height = Math.max(page.height, cursorY + rect.height + PADDING);
-		cursorX += rect.width + PADDING;
-		shelfHeight = Math.max(shelfHeight, rect.height);
-	}
+	const {pages, places} = shelfPack({
+		sizes: rects,
+		pageSize,
+		padding: PADDING,
+	});
+	rects.forEach((rect, index) => {
+		const place = places[index] as (typeof places)[number];
+		rect.atlas = place.page;
+		rect.x = place.x;
+		rect.y = place.y;
+	});
 
 	// 2nd pass: Draw one atlas at a time, keeping peak memory at one atlas
 	const pngs: Uint8Array[] = [];
 	for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
 		const page = pages[pageIndex] as (typeof pages)[number];
-		if (page.rects.length === 0) {
+		// An animation of only empty frames has no atlas
+		if (page.width === 0) {
 			continue;
 		}
 
 		const atlas = new PNG({width: page.width, height: page.height});
 		atlas.data.fill(0);
-		for (const rect of page.rects) {
+		for (const rect of rects) {
+			if (rect.atlas !== pageIndex) {
+				continue;
+			}
+
 			const source = await readFrame(rect.frameIndex);
 			PNG.bitblt(
 				source,
@@ -263,19 +242,7 @@ export const packWanim = async ({
 			);
 		}
 
-		if (compression === 'balanced') {
-			posterize(atlas.data);
-		}
-
-		pngs.push(
-			compression === 'small'
-				? encodePalettePng(atlas)
-				: PNG.sync.write(atlas, {
-						colorType: 6,
-						deflateLevel: 9,
-						filterType: -1,
-					}),
-		);
+		pngs.push(encodePng(atlas, compression));
 		onProgress?.(0.5 + (pageIndex + 1) / pages.length / 2);
 	}
 
@@ -289,7 +256,7 @@ export const packWanim = async ({
 	let offset = 0;
 	const atlases: WanimAtlas[] = pngs.map((png, index) => {
 		const page = pages[index] as (typeof pages)[number];
-		const length = png.length + WANIM_TAG_LENGTH;
+		const length = encryptedLength(png.length);
 		const atlas: WanimAtlas = {
 			offset,
 			length,
@@ -315,33 +282,13 @@ export const packWanim = async ({
 		frames,
 	};
 
-	const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
-	const salt = new Uint8Array(randomBytes(WANIM_SALT_LENGTH));
-	const noncePrefix = new Uint8Array(randomBytes(WANIM_NONCE_PREFIX_LENGTH));
-
-	const header = new Uint8Array(WANIM_HEADER_LENGTH);
-	const view = new DataView(header.buffer);
-	header.set(WANIM_MAGIC);
-	view.setUint16(8, WANIM_VERSION, true);
-	view.setUint16(10, key === null ? 0 : WANIM_FLAG_CUSTOM_KEY, true);
-	view.setUint32(12, manifestBytes.length + WANIM_TAG_LENGTH, true);
-	header.set(salt, 16);
-	header.set(noncePrefix, 16 + WANIM_SALT_LENGTH);
-
-	const context = {
-		fileKey: deriveFileKey({masterKey, salt}),
-		noncePrefix,
-		header,
-	};
-
 	return {
-		file: concatBytes([
-			header,
-			encryptBlock({context, blockIndex: 0, plaintext: manifestBytes}),
-			...pngs.map((plaintext, index) =>
-				encryptBlock({context, blockIndex: index + 1, plaintext}),
-			),
-		]),
+		file: writeWanimFile({
+			version: WANIM_VERSION,
+			key,
+			manifest,
+			blocks: pngs,
+		}),
 		manifest,
 	};
 };

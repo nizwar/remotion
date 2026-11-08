@@ -7,6 +7,7 @@ import {PNG} from 'pngjs';
 import type {WanimCompression} from '../compress-atlas';
 import {concatBytes, generateWanimKey} from '../crypto';
 import type {WanimCanvas} from '../fit-frame';
+import type {WanimManifest} from '../format';
 import {openWanim, readWanimHeader} from '../open-wanim';
 import {packWanim} from '../pack-wanim';
 
@@ -62,7 +63,9 @@ const reconstruct = (
 	file: Uint8Array,
 	frame: number,
 ): {width: number; data: Uint8Array} => {
-	const {manifest, readAtlas} = openWanim({file, key});
+	const opened = openWanim({file, key});
+	const manifest = opened.manifest as WanimManifest;
+	const {readAtlas} = opened;
 	const canvas = new Uint8Array(manifest.width * manifest.height * 4);
 	const spriteIndex = manifest.frames[frame] as number;
 	if (spriteIndex === -1) {

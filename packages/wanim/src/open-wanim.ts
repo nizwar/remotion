@@ -1,8 +1,10 @@
 import {decryptBlock, deriveFileKey, parseWanimKey} from './crypto';
-import type {WanimManifest} from './format';
+import type {WanimDraw, WanimLayersManifest, WanimManifest} from './format';
 import {
+	WANIM_DRAW_BYTES,
 	WANIM_FLAG_CUSTOM_KEY,
 	WANIM_HEADER_LENGTH,
+	WANIM_LAYERS_VERSION,
 	WANIM_MAGIC,
 	WANIM_NONCE_PREFIX_LENGTH,
 	WANIM_SALT_LENGTH,
@@ -26,7 +28,7 @@ export const readWanimHeader = (file: Uint8Array): WanimHeader => {
 
 	const view = new DataView(file.buffer, file.byteOffset, WANIM_HEADER_LENGTH);
 	const version = view.getUint16(8, true);
-	if (version !== WANIM_VERSION) {
+	if (version !== WANIM_VERSION && version !== WANIM_LAYERS_VERSION) {
 		throw new Error(`Unsupported .wanim version: ${version}`);
 	}
 
@@ -79,10 +81,56 @@ export const openWanim = ({
 				ciphertext: file.subarray(WANIM_HEADER_LENGTH, dataStart),
 			}),
 		),
-	) as WanimManifest;
+	) as WanimManifest | WanimLayersManifest;
 
 	return {
 		manifest,
+		// Version 2 only: What to draw in each frame
+		readTimeline: (): WanimDraw[][] => {
+			if (manifest.version !== WANIM_LAYERS_VERSION) {
+				throw new Error('Only version 2 files have a timeline');
+			}
+
+			const start = dataStart + manifest.timeline.offset;
+			const bytes = decryptBlock({
+				context,
+				blockIndex: manifest.atlases.length + 1,
+				ciphertext: file.subarray(start, start + manifest.timeline.length),
+			});
+			const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+			const drawsStart = (manifest.frameCount + 1) * 4;
+			if (
+				bytes.length !==
+				drawsStart + manifest.timeline.draws * WANIM_DRAW_BYTES
+			) {
+				throw new Error('Invalid .wanim file: The timeline has a wrong size');
+			}
+
+			return Array.from({length: manifest.frameCount}, (_, frame) => {
+				const from = view.getUint32(frame * 4, true);
+				const to = view.getUint32(frame * 4 + 4, true);
+				const draws: WanimDraw[] = [];
+				for (let index = from; index < to; index++) {
+					const offset = drawsStart + index * WANIM_DRAW_BYTES;
+					const float = (i: number) =>
+						view.getFloat32(offset + 4 + i * 4, true);
+					draws.push({
+						sprite: view.getUint32(offset, true),
+						matrix: [
+							float(0),
+							float(1),
+							float(2),
+							float(3),
+							float(4),
+							float(5),
+						],
+						alpha: float(6),
+					});
+				}
+
+				return draws;
+			});
+		},
 		// Atlases are encrypted separately so that a player only has to decrypt
 		// the one it is about to upload to the GPU.
 		readAtlas: (index: number): Uint8Array => {
