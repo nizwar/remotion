@@ -1,4 +1,4 @@
-# The `.wanim` format, version 1
+# The `.wanim` format, versions 1 and 2
 
 A `.wanim` file is an encrypted sprite animation: one or more texture atlases, plus a JSON manifest that says which part of which atlas to draw for each frame. Official players open every official file without any setup, and other tools cannot read anything but the header below.
 
@@ -17,7 +17,7 @@ All integers are little-endian. The files in [`fixtures/`](./fixtures) are the c
 | 40     | ...  | Block 0: Encrypted manifest                                 |
 | ...    | ...  | Data section, starts at `40 + manifestLength`: Atlas blocks |
 
-Reject a file if the magic or version differ.
+Reject a file if the magic differs or the version is not 1 or 2. Version 1 stores one sprite per frame. Version 2 stores a list of transformed sprites per frame ("layers"), see [Version 2](#version-2-layers). Header, encryption and atlases are the same in both.
 
 Block `i + 1` holds atlas `i`. Its position is `40 + manifestLength + atlases[i].offset`, and its size is `atlases[i].length`. Blocks are encrypted separately, so that a reader can read the manifest and then decrypt only the atlas it needs next.
 
@@ -99,3 +99,81 @@ Memory:
 - Otherwise stream: Atlases are in playback order, so while atlas `n` is on screen, prepare atlas `n + 1` (wrapping around when looping) on a background thread. Keep a small LRU of textures. If an atlas is not ready in time, hold the last frame and do not block.
 - Keep only the encrypted file in memory, or better a memory map of it. Decrypted PNG bytes can be released once they are decoded.
 - Texture memory is the limit, not file size: A 1 MB file can need 40 MB on the GPU.
+
+## Version 2: Layers
+
+A part of the animation that only moves, turns, scales or fades is stored once, and drawn with a matrix in every frame. Parts that change their look get one sprite per look. The fixtures are `sample-layers.wanim` (official key) and `sample-layers-custom-key.wanim`. `expected-layers.json` holds the manifest, the SHA-256 of each atlas, the decoded timeline, and the SHA-256 of the pixels of `layers-frame-<n>.png`, which show what a player draws for each frame (computed by `fixtures/reference-renderer.ts`).
+
+### Manifest
+
+```json
+{
+	"version": 2,
+	"compositionId": "sample-layers",
+	"width": 64,
+	"height": 48,
+	"fps": 12,
+	"frameCount": 6,
+	"opaque": false,
+	"gpuBytes": 3672,
+	"atlases": [{"offset": 0, "length": 270, "width": 51, "height": 18, "format": "png"}],
+	"sprites": [[0, 2, 2, 14, 14], [0, 18, 2, 22, 8], [0, 42, 2, 7, 7]],
+	"timeline": {"offset": 270, "length": 428, "draws": 12}
+}
+```
+
+| Field      | Meaning                                                                               |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `sprites`  | `[atlas, x, y, w, h]`: A rectangle of an atlas. There is no offset, the matrix places it |
+| `timeline` | Position and size of the timeline block in the data section, and the number of draws |
+
+Blocks: `0` is the manifest, `i + 1` is atlas `i`, and the timeline is block `atlases.length + 1`, at `40 + manifestLength + timeline.offset`.
+
+Each sprite has a transparent border of 1 pixel inside of its rectangle, and sprites are 2 pixels apart. Sample with the exact rectangle, there is no inset like in version 1: The border fades a transformed edge to transparent.
+
+### Timeline
+
+The decrypted timeline is binary, little-endian:
+
+1. `u32 frameStart[frameCount + 1]`: The draws of frame `f` are `frameStart[f]` to `frameStart[f + 1] - 1`. `frameStart[frameCount]` equals `timeline.draws`.
+2. `timeline.draws` draws of 32 bytes each:
+
+| Offset | Type  | Field                                     |
+| ------ | ----- | ----------------------------------------- |
+| 0      | `u32` | Index into `sprites`                      |
+| 4      | `f32` | `a`                                       |
+| 8      | `f32` | `b`                                       |
+| 12     | `f32` | `c`                                       |
+| 16     | `f32` | `d`                                       |
+| 20     | `f32` | `tx`                                      |
+| 24     | `f32` | `ty`                                      |
+| 28     | `f32` | `alpha`, from 0 to 1                      |
+
+Reject a timeline whose size is not `(frameCount + 1) * 4 + draws * 32`, or whose `frameStart` decreases.
+
+The matrix maps a point of the sprite, `(0, 0)` to `(w, h)`, to a point of the canvas:
+
+```
+x' = a * x + c * y + tx
+y' = b * x + d * y + ty
+```
+
+A frame can have no draws, which is an empty frame. Draws are in order, from back to front.
+
+### Rendering version 2
+
+Textures are set up as in version 1 (premultiplied, linear filtering, clamp to edge, no mipmaps, no sRGB).
+
+Drawing frame `f`:
+
+1. Clear to transparent, or to the background of the host view.
+2. Map the canvas into the view with `scale` and `origin` as in version 1, and clip to the canvas: Draws may reach outside of it. A scissor rectangle does this for free.
+3. For each draw, transform the 4 corners of its sprite with its matrix, then with `scale` and `origin`. Texture coordinates go from `(x, y) / atlasSize` to `(x + w, y + h) / atlasSize`.
+4. Multiply the sampled color by `alpha`, all 4 channels, as it is premultiplied.
+5. Blend with `src = ONE, dst = ONE_MINUS_SRC_ALPHA`, or disable blending if `opaque` is true.
+
+Put all draws of a frame into one vertex buffer and issue one draw call per run of draws that use the same atlas. Use nearest filtering only if a matrix is a whole pixel translation and `scale` is 1, otherwise linear.
+
+Playback is the same as in version 1. Skip the draw if the draws of the frame on screen are equal to those of the next frame, for example by comparing the byte ranges of the 2 frames once when loading.
+
+Memory: `gpuBytes` and the budget work the same. When streaming, prepare the atlases that the draws of the upcoming frames use. Atlases are in the order in which they are first used.

@@ -477,3 +477,33 @@ test('svga sprites keep the order of every frame', () => {
 		);
 	}
 });
+
+test('the version 2 fixtures match expected-layers.json', async () => {
+	const {readFileSync} = await import('node:fs');
+	const {createHash} = await import('node:crypto');
+	const dir = new URL('../../fixtures/', import.meta.url).pathname;
+	const expected = JSON.parse(
+		readFileSync(`${dir}expected-layers.json`, 'utf8'),
+	);
+	for (const [name, fixtureKey] of [
+		['sample-layers.wanim', null],
+		['sample-layers-custom-key.wanim', expected.customKey],
+	] as const) {
+		const opened = openWanim({
+			file: new Uint8Array(readFileSync(`${dir}${name}`)),
+			key: fixtureKey,
+		});
+		expect(opened.manifest).toEqual(expected.manifest);
+		expect(opened.readTimeline()).toEqual(expected.timeline);
+		expect(
+			expected.manifest.atlases.map((_: unknown, i: number) =>
+				createHash('sha256').update(opened.readAtlas(i)).digest('hex'),
+			),
+		).toEqual(expected.atlasSha256);
+	}
+
+	expected.frameSha256.forEach((sha: string, frame: number) => {
+		const png = PNG.sync.read(readFileSync(`${dir}layers-frame-${frame}.png`));
+		expect(createHash('sha256').update(png.data).digest('hex')).toBe(sha);
+	});
+});

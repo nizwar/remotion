@@ -31,7 +31,11 @@ for (const folder of fixtureFolders) {
 	}
 
 	for (const file of readdirSync('fixtures')) {
-		if (file.endsWith('.wanim') || file === 'expected.json') {
+		if (
+			file.endsWith('.wanim') ||
+			file.startsWith('expected') ||
+			file.startsWith('layers-frame-')
+		) {
 			cpSync(path.join('fixtures', file), path.join(target, file));
 		}
 	}
