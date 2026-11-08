@@ -15,9 +15,23 @@ Exports a composition as a [`.wanim`](/docs/wanim) sprite animation.
 npx remotion wanim render <entry-point> <composition-id> [<out-name>]
 ```
 
+An output name ending in `.svga` writes an [SVGA](https://github.com/svga/SVGA-Format) file instead, which is not encrypted.
+
 Files use the official key. To use a custom key instead, set the `WANIM_KEY` environment variable. Do not use a variable starting with `REMOTION_`, as those are exposed to your composition.
 
 Supports [`--props`](/docs/cli/render#--props), [`--scale`](/docs/cli/render#--scale), [`--frames`](/docs/cli/render#--frames) with a range, [`--every-nth-frame`](/docs/cli/render#--every-nth-frame), [`--concurrency`](/docs/cli/render#--concurrency) and [`--gl`](/docs/cli/render#--gl).
+
+### `--layers`
+
+Writes a version 2 file: Parts that move, turn, scale or fade are stored once and moved by the player, parts that change their look get a picture per look. Smaller and lighter on the GPU for most animations. Parts that change in every frame are stored like the default. Needs a player that supports version 2.
+
+### `--frame-rate`
+
+Frames per second of the file. Keeps the duration with fewer frames. Default: The frame rate of the composition.
+
+### `--image-rate`
+
+How many times per second a part may change its look. With `--layers` or SVGA, moving parts stay as smooth as the frame rate while changing parts get fewer pictures. Without them, frames in between repeat the last picture. Default: Every frame.
 
 ### `--key-file`
 

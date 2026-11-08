@@ -25,6 +25,18 @@ Or use [the Studio](/docs/studio): Click Render and choose the Wanim tab.
 
 Render a composition without a background to keep it transparent.
 
+## Formats
+
+- Frames, the default: One picture per frame. Opens in every `.wanim` player.
+- Layers, with `--layers`: A `.wanim` file of version 2. The page is split into parts, and a part that only moves, turns, scales or fades is stored once. Needs a player with version 2 support.
+- SVGA, with an output name ending in `.svga`: The same layers in the open [SVGA](https://github.com/svga/SVGA-Format) format, without encryption.
+
+Parts with effects that cannot be split, like a filter over a group, are stored as pictures, so every composition can be exported.
+
+## Frame rate and image rate
+
+`--frame-rate` lowers the number of frames without changing the duration. `--image-rate` lets parts that change their look get a new picture less often, while moves stay smooth. Both are also in the Picture section of the Studio.
+
 ## Playing a file
 
 `.wanim` is encrypted with an official key that is built into `@remotion/wanim` and the official players, so those open every file without any setup. Other tools cannot read it.

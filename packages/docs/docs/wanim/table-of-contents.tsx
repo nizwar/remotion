@@ -12,6 +12,18 @@ export const TableOfContents: React.FC = () => {
 					</strong>
 					<div>Pack PNG frames into a .wanim file</div>
 				</TOCItem>
+				<TOCItem link="/docs/wanim/pack-wanim-layers">
+					<strong>
+						<code>packWanimLayers()</code>
+					</strong>
+					<div>Pack layers into a .wanim file of version 2</div>
+				</TOCItem>
+				<TOCItem link="/docs/wanim/pack-svga">
+					<strong>
+						<code>packSvga()</code>
+					</strong>
+					<div>Write layers into an SVGA file</div>
+				</TOCItem>
 				<TOCItem link="/docs/wanim/open-wanim">
 					<strong>
 						<code>openWanim()</code>
@@ -23,6 +35,12 @@ export const TableOfContents: React.FC = () => {
 						<code>generateWanimKey()</code>
 					</strong>
 					<div>Create a random key</div>
+				</TOCItem>
+				<TOCItem link="/docs/wanim/sample-wanim-frames">
+					<strong>
+						<code>sampleWanimFrames()</code>
+					</strong>
+					<div>Pick frames for a lower frame rate</div>
 				</TOCItem>
 			</Grid>
 		</div>

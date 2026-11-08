@@ -1,0 +1,67 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-pack-svga.png
+title: packSvga()
+crumb: '@remotion/wanim'
+---
+
+# packSvga()<AvailableFrom v="4.0.542" />
+
+Writes the same layers as [`packWanimLayers()`](/docs/wanim/pack-wanim-layers) into an [SVGA 2.0](https://github.com/svga/SVGA-Format) file, which plays in any SVGA player. SVGA files are not encrypted. Use [`npx remotion wanim render`](/docs/cli/wanim) with an output name ending in `.svga`, which splits a composition into layers for you.
+
+```ts twoslash title="pack-svga.ts"
+import {readFileSync, writeFileSync} from 'node:fs';
+import {packSvga} from '@remotion/wanim';
+
+const {file} = packSvga({
+  animation: {
+    width: 200,
+    height: 200,
+    fps: 30,
+    bitmaps: [{width: 40, height: 40, png: new Uint8Array(readFileSync('ball.png'))}],
+    frames: [
+      [{bitmap: 0, matrix: [1, 0, 0, 1, 0, 80], alpha: 1}],
+      [{bitmap: 0, matrix: [1, 0, 0, 1, 10, 80], alpha: 1}],
+    ],
+  },
+  compression: 'none',
+});
+
+writeFileSync('out/ball.svga', file);
+```
+
+## Arguments
+
+An object with the following properties:
+
+### `animation`
+
+The layers, see [`packWanimLayers()`](/docs/wanim/pack-wanim-layers#animation).
+
+### `compression`
+
+`none`, `balanced` or `small`: Reduces the size of the images with some loss of color.
+
+## Return value
+
+An object with the following properties:
+
+### `file`
+
+The `.svga` file as a `Uint8Array`.
+
+### `fps`
+
+The frame rate in the file. SVGA only supports whole numbers, so a fractional frame rate is rounded.
+
+### `sprites`
+
+The number of SVGA sprites. A bitmap that is drawn several times in a frame needs one sprite for each.
+
+### `images`
+
+The number of images in the file.
+
+## See also
+
+- [`packWanimLayers()`](/docs/wanim/pack-wanim-layers)
+- [`npx remotion wanim`](/docs/cli/wanim)

@@ -45,6 +45,11 @@ The size, frame rate, atlases, sprites and frames of the animation.
 
 Takes the index of an atlas and returns its PNG file as a `Uint8Array`.
 
+### `readTimeline()`
+
+For a file of version 2: Returns the draws of each frame, each with a `sprite`, a `matrix` and an `alpha`. Throws for version 1.
+
 ## See also
 
 - [`packWanim()`](/docs/wanim/pack-wanim)
+- [`packWanimLayers()`](/docs/wanim/pack-wanim-layers)

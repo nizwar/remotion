@@ -1,0 +1,66 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-sample-wanim-frames.png
+title: sampleWanimFrames()
+crumb: '@remotion/wanim'
+---
+
+# sampleWanimFrames()<AvailableFrom v="4.0.542" />
+
+Calculates which frames of a composition to export for a lower frame rate or image rate, keeping the duration.
+
+```ts twoslash title="sample.ts"
+import {sampleWanimFrames} from '@remotion/wanim';
+
+const {fps, frames, imageFrames} = sampleWanimFrames({
+  firstFrame: 0,
+  lastFrame: 59,
+  fps: 30,
+  frameRate: 12,
+  imageRate: 6,
+});
+// fps: 12, frames: [0, 2, 5, 7, 10, ...], imageFrames: [0, 0, 5, 5, 10, ...]
+```
+
+## Arguments
+
+An object with the following properties:
+
+### `firstFrame`
+
+The first frame of the composition to export.
+
+### `lastFrame`
+
+The last frame of the composition to export, included.
+
+### `fps`
+
+The frame rate of the composition.
+
+### `frameRate`
+
+Frames per second of the file, or `null` to keep every frame. A frame rate above `fps` keeps every frame.
+
+### `imageRate`
+
+How many times per second a part may change its look, or `null` for every frame.
+
+## Return value
+
+An object with the following properties:
+
+### `fps`
+
+The playback speed of the file.
+
+### `frames`
+
+The frame of the composition that each frame of the file shows.
+
+### `imageFrames`
+
+The frame of the composition whose look each frame of the file shows.
+
+## See also
+
+- [`npx remotion wanim`](/docs/cli/wanim)

@@ -1,0 +1,99 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-pack-wanim-layers.png
+title: packWanimLayers()
+crumb: '@remotion/wanim'
+---
+
+# packWanimLayers()<AvailableFrom v="4.0.542" />
+
+Packs bitmaps and the matrices to draw them with into a `.wanim` file of version 2. Use [`npx remotion wanim render --layers`](/docs/cli/wanim#--layers), which splits a composition into layers for you.
+
+```ts twoslash title="pack-layers.ts"
+import {readFileSync, writeFileSync} from 'node:fs';
+import {packWanimLayers} from '@remotion/wanim';
+
+const {file} = packWanimLayers({
+  animation: {
+    width: 200,
+    height: 200,
+    fps: 30,
+    bitmaps: [{width: 40, height: 40, png: new Uint8Array(readFileSync('ball.png'))}],
+    frames: [
+      [{bitmap: 0, matrix: [1, 0, 0, 1, 0, 80], alpha: 1}],
+      [{bitmap: 0, matrix: [1, 0, 0, 1, 10, 80], alpha: 1}],
+    ],
+  },
+  key: null,
+  compositionId: 'ball',
+  atlasSize: null,
+  compression: 'none',
+  onProgress: null,
+});
+
+writeFileSync('out/ball.wanim', file);
+```
+
+## Arguments
+
+An object with the following properties:
+
+### `animation`
+
+An object with the following properties:
+
+#### `width`
+
+Width of the canvas in pixels.
+
+#### `height`
+
+Height of the canvas in pixels.
+
+#### `fps`
+
+The playback speed.
+
+#### `bitmaps`
+
+The pictures, each with a `width`, a `height` and a `png` with straight alpha of exactly that size.
+
+#### `frames`
+
+For each frame, what to draw from back to front: The index of a `bitmap`, a `matrix` `[a, b, c, d, tx, ty]` that maps a pixel of the bitmap to the canvas, and an `alpha` between `0` and `1`. Draws that are invisible or outside of the canvas are left out.
+
+### `key`
+
+`null` to use the official key, or a custom key, see [`generateWanimKey()`](/docs/wanim/generate-wanim-key).
+
+### `compositionId`
+
+A name to store in the file, or `null`.
+
+### `atlasSize`
+
+The maximum width and height of an atlas, up to `4096`. If `null`, it is `2048`, or `4096` for large bitmaps.
+
+### `compression`
+
+`none`, `balanced` or `small`, as in [`packWanim()`](/docs/wanim/pack-wanim#compression).
+
+### `onProgress`
+
+A function that is called with a number between `0` and `1`, or `null`.
+
+## Return value
+
+An object with the following properties:
+
+### `file`
+
+The `.wanim` file as a `Uint8Array`.
+
+### `manifest`
+
+The contents of the file. Read the draws with [`openWanim()`](/docs/wanim/open-wanim).
+
+## See also
+
+- [`packSvga()`](/docs/wanim/pack-svga)
+- [`npx remotion wanim`](/docs/cli/wanim)
