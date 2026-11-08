@@ -21,8 +21,18 @@ npm run export LoadingOrb    # Create out/LoadingOrb.wanim
 To reduce the size, pass flags after `--`:
 
 ```bash
-npm run export LoadingOrb -- --scale=0.5 --every-nth-frame=2 --compress=balanced
+npm run export LoadingOrb -- --scale=0.5 --frame-rate=15 --compress=balanced
 ```
+
+Formats:
+
+```bash
+npm run export LoadingOrb -- --layers                       # version 2: moving parts are stored once
+npm run export LoadingOrb out/LoadingOrb.svga               # SVGA, not encrypted
+npm run export LoadingOrb -- --layers --frame-rate=24 --image-rate=12
+```
+
+`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth. Version 2 files need players with version 2 support.
 
 To export from the Studio, click Render and choose the Wanim tab.
 

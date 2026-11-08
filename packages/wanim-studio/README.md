@@ -14,6 +14,16 @@ bun run export LoadingOrb     # Create out/LoadingOrb.wanim
 
 Add `--compress=balanced` or `--compress=small` for a smaller file.
 
+Formats:
+
+```bash
+bun run export LoadingOrb --layers               # version 2: moving parts are stored once
+bun run export LoadingOrb out/LoadingOrb.svga    # SVGA, not encrypted
+bun run export LoadingOrb --layers --frame-rate=24 --image-rate=12
+```
+
+`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth.
+
 You can also export from the Studio: Click Render and choose the Wanim tab.
 
 Build the monorepo first using `bunx turbo run make` in the root.
@@ -32,4 +42,5 @@ Build the monorepo first using `bunx turbo run make` in the root.
 - Do not set a background, so that the animation stays transparent.
 - Keep it small: Frames are stored as pixels, and memory grows with size and frame count.
 - For a seamless loop, derive motion from `frame / durationInFrames`.
-- Add flags to reduce the size, for example `bun run export LoadingOrb --every-nth-frame=2`.
+- Add flags to reduce the size, for example `bun run export LoadingOrb --frame-rate=15`.
+- With `--layers`, prefer moving things with `transform`, `cx`/`cy` or `x`/`y` over redrawing them: Moved parts are stored once.
