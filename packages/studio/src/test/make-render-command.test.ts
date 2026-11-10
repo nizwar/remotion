@@ -308,3 +308,54 @@ test('Should not pass --layers for SVGA, the extension decides', () => {
 	expect(command).not.toContain('--layers');
 	expect(command).not.toContain('--frame-rate');
 });
+
+test('Should pass the animations of a wanim render', () => {
+	const command = makeReadOnlyStudioRenderCommand({
+		...getBaseInput(),
+		outName: 'out/sprite.wanim',
+		renderMode: 'wanim',
+		wanim: {
+			format: 'layers',
+			frameRate: null,
+			imageRate: null,
+			animations: 'transition_in=0-29,idle=30-89:loop',
+			legacy: false,
+		},
+	});
+
+	expect(command).toContain(
+		"--animations='transition_in=0-29,idle=30-89:loop'",
+	);
+	expect(command).not.toContain('--wanim-version');
+});
+
+test('Should ask for an older wanim version instead of animations', () => {
+	const options = {
+		...getBaseInput(),
+		outName: 'out/sprite.wanim',
+		renderMode: 'wanim' as const,
+	};
+	const layers = makeReadOnlyStudioRenderCommand({
+		...options,
+		wanim: {
+			format: 'layers',
+			frameRate: null,
+			imageRate: null,
+			animations: 'a=0-1',
+			legacy: true,
+		},
+	});
+	expect(layers).toContain("--wanim-version='2'");
+	expect(layers).not.toContain('--animations');
+	const frames = makeReadOnlyStudioRenderCommand({
+		...options,
+		wanim: {
+			format: 'frames',
+			frameRate: null,
+			imageRate: null,
+			animations: '',
+			legacy: true,
+		},
+	});
+	expect(frames).toContain("--wanim-version='1'");
+});

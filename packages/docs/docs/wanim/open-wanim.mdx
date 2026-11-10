@@ -43,13 +43,32 @@ The size, frame rate, atlases, sprites and frames of the animation.
 
 ### `readAtlas()`
 
-Takes the index of an atlas and returns its PNG file as a `Uint8Array`.
+Takes the index of an atlas and returns its PNG file as a `Uint8Array`, or its WebP file if `manifest.atlases[index].format` is `webp`.
 
 ### `readTimeline()`
 
-For a file of version 2: Returns the draws of each frame, each with a `sprite`, a `matrix` and an `alpha`. Throws for version 1.
+For a file of version 2: Returns the draws of each frame, each with a `sprite`, a `matrix` and an `alpha`. Throws for other versions.
+
+### `readScene()`
+
+For a file of version 3: Returns `draws`, every different draw once, `lists`, every different frame once as indices into `draws`, and `frames`, which holds for each animation key an index into `lists` per frame. Throws for other versions.
+
+```ts twoslash title="frames-of-an-animation.ts"
+import {readFileSync} from 'node:fs';
+import {openWanim} from '@remotion/wanim';
+
+const {readScene} = openWanim({
+  file: new Uint8Array(readFileSync('out/my-comp.wanim')),
+  key: null,
+});
+const scene = readScene();
+const idle = (scene.frames.idle ?? []).map((list) =>
+  (scene.lists[list] ?? []).map((draw) => scene.draws[draw]),
+);
+```
 
 ## See also
 
 - [`packWanim()`](/docs/wanim/pack-wanim)
 - [`packWanimLayers()`](/docs/wanim/pack-wanim-layers)
+- [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations)

@@ -70,7 +70,7 @@ export const readWanimAsSet = async ({
 		| WanimLayersManifest
 		| WanimAnimationsManifest;
 	const atlases = await Promise.all(
-		manifest.atlases.map(async (atlas, index) => {
+		manifest.atlases.map((atlas, index) => {
 			const bytes = opened.readAtlas(index);
 			if (atlas.format === 'webp') {
 				if (decodeWebp === null) {

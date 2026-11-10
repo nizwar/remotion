@@ -6,14 +6,21 @@ import {LicensingInternals} from '@remotion/licensing';
 import type {ChromiumOptions, LogLevel} from '@remotion/renderer';
 import {RenderInternals} from '@remotion/renderer';
 import {BrowserSafeApis} from '@remotion/renderer/client';
+import {parseWanimAnimations} from '@remotion/studio-shared';
+import type {WanimAtlasFormat, WanimCompression} from '@remotion/wanim';
 import {
+	canUseWebp,
+	decodeWebp,
 	generateWanimKey,
 	openWanim,
 	packSvga,
 	packWanim,
 	packWanimLayers,
+	readFramesAsAnimation,
+	readWanimAsSet,
 	readWanimHeader,
-	sampleWanimFrames,
+	rekeyAnimationSet,
+	sampleWanimAnimations,
 } from '@remotion/wanim';
 import {NoReactInternals} from 'remotion/no-react';
 import {defaultBrowserDownloadProgress} from './browser-download-bar';
@@ -32,6 +39,7 @@ import {bundleOnCliOrTakeServeUrl} from './setup-cache';
 import {shouldUseNonOverlayingLogger} from './should-use-non-overlaying-logger';
 import {getOutputLocation} from './user-passed-output-location';
 import {renderWanimLayers} from './wanim-layers/render-layers';
+import {packWanimSet, toWanimSet} from './wanim-pack';
 
 // `frames` stores one picture per frame, `layers` moving parts as layers
 export type WanimFormat = 'frames' | 'layers' | 'svga';
@@ -44,6 +52,7 @@ export const WANIM_COMMAND = 'wanim';
 export const WANIM_RENDER_COMMAND = 'render';
 export const WANIM_KEYGEN_COMMAND = 'keygen';
 export const WANIM_INSPECT_COMMAND = 'inspect';
+export const WANIM_CONVERT_COMMAND = 'convert';
 
 // Above this, a player can no longer keep all atlases on the GPU of a phone
 export const GPU_BUDGET_IN_BYTES = 256 * 1024 * 1024;
@@ -92,6 +101,68 @@ export const getWanimKey = (): string | null => {
 	return process.env.WANIM_KEY ?? null;
 };
 
+const flags = () => parsedCli as unknown as Record<string, unknown>;
+
+export const parseWanimCompression = (value: unknown): WanimCompression => {
+	const compression = value === undefined ? 'none' : value;
+	if (
+		compression !== 'none' &&
+		compression !== 'balanced' &&
+		compression !== 'small' &&
+		compression !== 'lossy'
+	) {
+		throw new Error(
+			`--compress must be "none", "balanced", "small" or "lossy", got ${value}`,
+		);
+	}
+
+	return compression;
+};
+
+// Version 3 is what new files are. 1 and 2 are for players that are older.
+export const parseWanimVersion = (value: unknown): 1 | 2 | 3 => {
+	if (value === undefined) {
+		return 3;
+	}
+
+	const version = Number(value);
+	if (version !== 1 && version !== 2 && version !== 3) {
+		throw new Error(`--wanim-version must be 1, 2 or 3, got ${value}`);
+	}
+
+	return version;
+};
+
+// WebP atlases are smaller, but need a package that may not be installed
+export const resolveWanimAtlasFormat = async (
+	value: unknown,
+	logLevel: LogLevel,
+): Promise<WanimAtlasFormat> => {
+	if (value !== undefined && value !== 'png' && value !== 'webp') {
+		throw new Error(`--atlas-format must be "png" or "webp", got ${value}`);
+	}
+
+	if (value === 'png') {
+		return 'png';
+	}
+
+	if (await canUseWebp()) {
+		return 'webp';
+	}
+
+	if (value === 'webp') {
+		throw new Error(
+			'WebP atlases need the "sharp" package. Install it, or pass --atlas-format=png.',
+		);
+	}
+
+	Log.warn(
+		{indent: false, logLevel},
+		'The "sharp" package is not installed, so the atlases are PNG instead of the smaller WebP.',
+	);
+	return 'png';
+};
+
 const renderWanim = async (
 	remotionRoot: string,
 	args: string[],
@@ -107,18 +178,9 @@ const renderWanim = async (
 		throw new Error(`--atlas-size must be a number, got ${atlasSizeFlag}`);
 	}
 
-	const compressFlag = (parsedCli as unknown as Record<string, unknown>)
-		.compress;
-	const compression = compressFlag === undefined ? 'none' : compressFlag;
-	if (
-		compression !== 'none' &&
-		compression !== 'balanced' &&
-		compression !== 'small'
-	) {
-		throw new Error(
-			`--compress must be "none", "balanced" or "small", got ${compressFlag}`,
-		);
-	}
+	const compression = parseWanimCompression(flags().compress);
+	const wanimVersion = parseWanimVersion(flags()['wanim-version']);
+	const animationRanges = parseWanimAnimations(flags().animations);
 
 	const cliFlags = parsedCli as unknown as Record<string, unknown>;
 	const readRate = (name: string) => {
@@ -323,6 +385,30 @@ const renderWanim = async (
 
 	const format: WanimFormat =
 		extension === '.svga' ? 'svga' : cliFlags.layers ? 'layers' : 'frames';
+	if (format === 'svga' && animationRanges !== null) {
+		throw new Error('An SVGA file holds one animation, remove --animations.');
+	}
+
+	if (wanimVersion !== 3 && format !== 'svga') {
+		if (animationRanges !== null) {
+			throw new Error('--animations needs a version 3 file.');
+		}
+
+		if (compression === 'lossy' || cliFlags['atlas-format'] === 'webp') {
+			throw new Error('WebP atlases need a version 3 file.');
+		}
+
+		if ((wanimVersion === 2) !== (format === 'layers')) {
+			throw new Error(
+				'Version 1 files store frames and version 2 files store layers: Pass --layers with --wanim-version=2 only.',
+			);
+		}
+	}
+
+	const atlasFormat =
+		wanimVersion === 3 && format !== 'svga'
+			? await resolveWanimAtlasFormat(cliFlags['atlas-format'], logLevel)
+			: 'png';
 
 	const absoluteOutputFile = path.resolve(process.cwd(), outName);
 	const overwrite = overwriteOption.getValue(commandLine, true).value;
@@ -345,13 +431,14 @@ const renderWanim = async (
 		frameRange,
 	);
 	// --every-nth-frame is the older way to lower the frame rate
-	const sampling = sampleWanimFrames({
+	const sampling = sampleWanimAnimations({
 		firstFrame,
 		lastFrame,
 		fps: config.fps,
 		frameRate:
 			frameRateFlag ?? (everyNthFrame > 1 ? config.fps / everyNthFrame : null),
 		imageRate,
+		animations: animationRanges,
 	});
 	const concurrency = RenderInternals.resolveConcurrency(
 		concurrencyOption.getValue(commandLine).value,
@@ -437,23 +524,49 @@ const renderWanim = async (
 		const fileOf = new Map(
 			uniqueFrames.map((frame, index) => [frame, files[index] as string]),
 		);
-		const {file: wanim, manifest} = await packWanim({
-			framePaths: sampling.imageFrames.map(
-				(frame) => fileOf.get(frame) as string,
-			),
-			fps: sampling.fps,
-			key,
-			compositionId,
-			atlasSize,
-			canvas: null,
-			compression,
-			onProgress: (value) => {
-				progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
-			},
-		});
-		output = wanim;
-		gpuBytes = manifest.gpuBytes;
-		summary = `${manifest.frameCount} frames at ${formatFps(manifest.fps)} fps, ${manifest.sprites.length} sprites, ${manifest.atlases.length} atlases, ${toMegabytes(wanim.length)} MB on disk, ${toMegabytes(manifest.gpuBytes)} MB on the GPU`;
+		const framePaths = sampling.imageFrames.map(
+			(frame) => fileOf.get(frame) as string,
+		);
+		if (wanimVersion === 3) {
+			const animation = await readFramesAsAnimation({
+				framePaths,
+				fps: sampling.fps,
+				canvas: null,
+				onProgress: (value) => {
+					progress.update(`Reading frames ${Math.round(value * 100)}%`, false);
+				},
+			});
+			const packed = await packWanimSet({
+				set: toWanimSet(animation, sampling.animations),
+				key,
+				compositionId,
+				atlasSize,
+				compression,
+				atlasFormat,
+				onProgress: (value) => {
+					progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
+				},
+			});
+			output = packed.file;
+			gpuBytes = packed.manifest.gpuBytes;
+			({summary} = packed);
+		} else {
+			const {file: wanim, manifest} = await packWanim({
+				framePaths,
+				fps: sampling.fps,
+				key,
+				compositionId,
+				atlasSize,
+				canvas: null,
+				compression,
+				onProgress: (value) => {
+					progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
+				},
+			});
+			output = wanim;
+			gpuBytes = manifest.gpuBytes;
+			summary = `${manifest.frameCount} frames at ${formatFps(manifest.fps)} fps, ${manifest.sprites.length} sprites, ${manifest.atlases.length} atlases, ${toMegabytes(wanim.length)} MB on disk, ${toMegabytes(manifest.gpuBytes)} MB on the GPU`;
+		}
 	} else {
 		const animation = await renderWanimLayers({
 			puppeteerInstance,
@@ -485,7 +598,22 @@ const renderWanim = async (
 			},
 			isCancelled: () => false,
 		});
-		if (format === 'layers') {
+		if (format === 'layers' && wanimVersion === 3) {
+			const packed = await packWanimSet({
+				set: toWanimSet(animation, sampling.animations),
+				key,
+				compositionId,
+				atlasSize,
+				compression,
+				atlasFormat,
+				onProgress: (value) => {
+					progress.update(`Packing atlases ${Math.round(value * 100)}%`, false);
+				},
+			});
+			output = packed.file;
+			gpuBytes = packed.manifest.gpuBytes;
+			({summary} = packed);
+		} else if (format === 'layers') {
 			const {file: wanim, manifest} = packWanimLayers({
 				animation,
 				key,
@@ -574,6 +702,69 @@ const inspectWanim = (filePath: string | undefined, logLevel: LogLevel) => {
 	Log.info({indent: false, logLevel}, JSON.stringify(manifest, null, 2));
 };
 
+// Packs a file of any version again as version 3: Smaller, with less memory
+// on the GPU, and optionally split into animations with keys
+const convertWanim = async (args: string[], logLevel: LogLevel) => {
+	const [input, outName] = args;
+	if (!input || !outName) {
+		throw new Error(
+			`Usage: remotion ${WANIM_COMMAND} ${WANIM_CONVERT_COMMAND} <input.wanim> <output.wanim> [--animations=...]`,
+		);
+	}
+
+	if (path.extname(outName) !== '.wanim') {
+		throw new Error(`The output must end in .wanim, got ${outName}`);
+	}
+
+	const absoluteOutputFile = path.resolve(process.cwd(), outName);
+	if (existsSync(absoluteOutputFile) && !flags().overwrite) {
+		throw new Error(
+			`File at ${absoluteOutputFile} already exists. Use --overwrite to overwrite it.`,
+		);
+	}
+
+	const key = getWanimKey();
+	const file = new Uint8Array(readFileSync(input));
+	const compression = parseWanimCompression(flags().compress);
+	const atlasFormat = await resolveWanimAtlasFormat(
+		flags()['atlas-format'],
+		logLevel,
+	);
+	const atlasSizeFlag = flags()['atlas-size'];
+	const atlasSize = atlasSizeFlag === undefined ? null : Number(atlasSizeFlag);
+	if (atlasSize !== null && !Number.isInteger(atlasSize)) {
+		throw new Error(`--atlas-size must be a number, got ${atlasSizeFlag}`);
+	}
+
+	const before = openWanim({file, key}).manifest;
+	const set = rekeyAnimationSet(
+		await readWanimAsSet({file, key, decodeWebp}),
+		parseWanimAnimations(flags().animations),
+	);
+	const packed = await packWanimSet({
+		set,
+		key,
+		compositionId: before.compositionId,
+		atlasSize,
+		compression,
+		atlasFormat,
+		onProgress: null,
+	});
+	mkdirSync(path.dirname(absoluteOutputFile), {recursive: true});
+	writeFileSync(absoluteOutputFile, packed.file);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.blue(`+ ${path.relative(process.cwd(), absoluteOutputFile)}`),
+	);
+	Log.info({indent: false, logLevel}, chalk.gray(packed.summary));
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			`Was version ${before.version}: ${toMegabytes(file.length)} MB on disk, ${toMegabytes(before.gpuBytes)} MB on the GPU`,
+		),
+	);
+};
+
 const printWanimHelp = (logLevel: LogLevel) => {
 	Log.info({indent: false, logLevel}, chalk.blue(`remotion ${WANIM_COMMAND}`));
 	Log.info({indent: false, logLevel});
@@ -590,7 +781,19 @@ const printWanimHelp = (logLevel: LogLevel) => {
 	Log.info(
 		{indent: false, logLevel},
 		chalk.gray(
-			'--layers stores moving parts once (version 2). An .svga output name writes an unencrypted SVGA file instead.',
+			'--layers stores moving parts once. An .svga output name writes an unencrypted SVGA file instead.',
+		),
+	);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'--animations="transition_in=0-29,idle=30-89:loop" puts several animations into the file, which the app plays by key. They share their pictures.',
+		),
+	);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'--atlas-format=png|webp and --compress=none|balanced|small|lossy set how the pictures are stored. --wanim-version=1|2 writes a file for older players.',
 		),
 	);
 	Log.info(
@@ -608,6 +811,17 @@ const printWanimHelp = (logLevel: LogLevel) => {
 		{indent: false, logLevel},
 		chalk.gray(
 			'Print a random key, for files that should not use the official key.',
+		),
+	);
+	Log.info({indent: false, logLevel});
+	Log.info(
+		{indent: false, logLevel},
+		`remotion ${WANIM_COMMAND} ${WANIM_CONVERT_COMMAND} <input.wanim> <output.wanim>`,
+	);
+	Log.info(
+		{indent: false, logLevel},
+		chalk.gray(
+			'Pack a file of any version again as version 3, without rendering. --animations splits its frames into animations.',
 		),
 	);
 	Log.info({indent: false, logLevel});
@@ -635,6 +849,11 @@ export const wanimCommand = async (
 	if (subcommand === WANIM_KEYGEN_COMMAND) {
 		// Bypasses the log level, so it can be used in `$(...)`
 		process.stdout.write(`${generateWanimKey()}\n`);
+		return;
+	}
+
+	if (subcommand === WANIM_CONVERT_COMMAND) {
+		await convertWanim(subcommandArgs, logLevel);
 		return;
 	}
 

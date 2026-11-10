@@ -7,12 +7,14 @@ import {RenderInternals} from '@remotion/renderer';
 import {BrowserSafeApis} from '@remotion/renderer/client';
 import type {JobProgressCallback, RenderJob} from '@remotion/studio-server';
 import type {WanimOptions} from '@remotion/studio-shared';
+import {parseWanimAnimations} from '@remotion/studio-shared';
 import type {Matrix} from '@remotion/wanim';
 import {
 	packSvga,
 	packWanim,
 	packWanimLayers,
-	sampleWanimFrames,
+	readFramesAsAnimation,
+	sampleWanimAnimations,
 } from '@remotion/wanim';
 import {NoReactInternals} from 'remotion/no-react';
 import {convertEntryPointToServeUrl} from '../convert-entry-point-to-serve-url';
@@ -21,8 +23,13 @@ import {Log} from '../log';
 import {parsedCli} from '../parsed-cli';
 import {initialAggregateRenderProgress} from '../progress-types';
 import {bundleOnCliOrTakeServeUrl} from '../setup-cache';
-import {GPU_BUDGET_IN_BYTES, getWanimKey} from '../wanim';
+import {
+	GPU_BUDGET_IN_BYTES,
+	getWanimKey,
+	resolveWanimAtlasFormat,
+} from '../wanim';
 import {renderWanimLayers} from '../wanim-layers/render-layers';
+import {packWanimSet, toWanimSet} from '../wanim-pack';
 import {processVideoJob} from './process-video';
 import type {StudioRenderJobFixedConfig} from './studio-render-job-fixed-config';
 
@@ -117,45 +124,76 @@ const processFramesJob = async ({
 		.filter((name) => name.endsWith('.png'))
 		.sort()
 		.map((name) => path.join(framesDir, name));
-	const sampling = sampleWanimFrames({
+	const sampling = sampleWanimAnimations({
 		firstFrame: job.startFrame,
 		lastFrame: job.endFrame,
 		fps: wanim.fps,
 		frameRate: wanim.frameRate,
 		imageRate: wanim.imageRate,
+		animations: wanim.legacy ? null : parseWanimAnimations(wanim.animations),
 	});
+	const sampledPaths = sampling.imageFrames.map(
+		(frame) => framePaths[frame - job.startFrame] as string,
+	);
+	const canvas = {width: wanim.width, height: wanim.height, fit: wanim.fit};
+	const onPackProgress = (value: number) => {
+		if (latest.progress) {
+			onProgress({
+				...latest.progress,
+				message: `Packing atlases ${Math.round(value * 100)}%`,
+				value: RENDER_SHARE + value * (1 - RENDER_SHARE),
+			});
+		}
+	};
 
-	const {file, manifest} = await packWanim({
-		framePaths: sampling.imageFrames.map(
-			(frame) => framePaths[frame - job.startFrame] as string,
-		),
-		fps: sampling.fps,
-		key: getWanimKey(),
-		compositionId: job.compositionId,
-		atlasSize: null,
-		canvas: {width: wanim.width, height: wanim.height, fit: wanim.fit},
-		compression: wanim.compression,
-		onProgress: (value) => {
-			if (latest.progress) {
-				onProgress({
-					...latest.progress,
-					message: `Packing atlases ${Math.round(value * 100)}%`,
-					value: RENDER_SHARE + value * (1 - RENDER_SHARE),
-				});
-			}
-		},
-	});
+	let file: Uint8Array;
+	let summary: string;
+	let gpuBytes: number;
+	if (wanim.legacy) {
+		const packed = await packWanim({
+			framePaths: sampledPaths,
+			fps: sampling.fps,
+			key: getWanimKey(),
+			compositionId: job.compositionId,
+			atlasSize: null,
+			canvas,
+			compression: wanim.compression,
+			onProgress: onPackProgress,
+		});
+		({file} = packed);
+		gpuBytes = packed.manifest.gpuBytes;
+		summary = `${packed.manifest.frameCount} frames, ${toMb(file.length)} MB on disk, ${toMb(gpuBytes)} MB on the GPU`;
+	} else {
+		const packed = await packWanimSet({
+			set: toWanimSet(
+				await readFramesAsAnimation({
+					framePaths: sampledPaths,
+					fps: sampling.fps,
+					canvas,
+					onProgress: null,
+				}),
+				sampling.animations,
+			),
+			key: getWanimKey(),
+			compositionId: job.compositionId,
+			atlasSize: null,
+			compression: wanim.compression,
+			atlasFormat: await resolveWanimAtlasFormat(undefined, logLevel),
+			onProgress: onPackProgress,
+		});
+		({file, summary} = packed);
+		gpuBytes = packed.manifest.gpuBytes;
+	}
 
 	const output = path.resolve(remotionRoot, job.outName);
 	mkdirSync(path.dirname(output), {recursive: true});
 	writeFileSync(output, file);
 
-	const summary = `${manifest.frameCount} frames, ${toMb(file.length)} MB on disk, ${toMb(manifest.gpuBytes)} MB on the GPU`;
 	if (latest.progress) {
 		onProgress({...latest.progress, message: summary, value: 1});
 	}
 
-	if (manifest.gpuBytes > GPU_BUDGET_IN_BYTES) {
+	if (gpuBytes > GPU_BUDGET_IN_BYTES) {
 		Log.warn(
 			{indent: false, logLevel},
 			'This animation is too large to be kept on the GPU of a phone. Consider a lower scale, a lower frame rate or the layers format.',
@@ -294,7 +332,11 @@ const processLayersJob = async ({
 				preferredEffectBackend: job.preferredEffectBackend,
 			});
 
-			const sampling = sampleWanimFrames({
+			const sampling = sampleWanimAnimations({
+				animations:
+					wanim.legacy || wanim.format === 'svga'
+						? null
+						: parseWanimAnimations(wanim.animations),
 				firstFrame: job.startFrame,
 				lastFrame: job.endFrame,
 				fps: config.fps,
@@ -351,7 +393,24 @@ const processLayersJob = async ({
 			report('Packing', RENDER_SHARE);
 			let file: Uint8Array;
 			let summary: string;
-			if (wanim.format === 'layers') {
+			if (wanim.format === 'layers' && !wanim.legacy) {
+				const packed = await packWanimSet({
+					set: toWanimSet(animation, sampling.animations),
+					key: getWanimKey(),
+					compositionId: job.compositionId,
+					atlasSize: null,
+					compression: wanim.compression,
+					atlasFormat: await resolveWanimAtlasFormat(undefined, logLevel),
+					onProgress: null,
+				});
+				({file, summary} = packed);
+				if (packed.manifest.gpuBytes > GPU_BUDGET_IN_BYTES) {
+					Log.warn(
+						{indent: false, logLevel},
+						'This animation is too large to be kept on the GPU of a phone. Consider a lower scale or a lower image rate.',
+					);
+				}
+			} else if (wanim.format === 'layers') {
 				const packed = packWanimLayers({
 					animation,
 					key: getWanimKey(),

@@ -1,12 +1,21 @@
 import type {WanimCompression} from './compress-atlas';
 import {posterize, quantize} from './compress-atlas';
 
+type SharpImage = {
+	webp: (options: Record<string, unknown>) => SharpImage;
+	ensureAlpha: () => SharpImage;
+	raw: () => SharpImage;
+	toBuffer: {
+		(): Promise<Buffer>;
+		(options: {
+			resolveWithObject: true;
+		}): Promise<{data: Buffer; info: {width: number; height: number}}>;
+	};
+};
 type Sharp = (
 	input: Uint8Array,
-	options: {raw: {width: number; height: number; channels: 4}},
-) => {
-	webp: (options: Record<string, unknown>) => {toBuffer: () => Promise<Buffer>};
-};
+	options?: {raw: {width: number; height: number; channels: 4}},
+) => SharpImage;
 
 const loadSharp = async (): Promise<Sharp> => {
 	try {
@@ -19,6 +28,26 @@ const loadSharp = async (): Promise<Sharp> => {
 			'WebP atlases need the "sharp" package. Install it, or use PNG atlases.',
 		);
 	}
+};
+
+// Whether WebP atlases can be written and read here
+export const canUseWebp = async (): Promise<boolean> => {
+	try {
+		await loadSharp();
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+// WebP to straight alpha RGBA
+export const decodeWebp = async (bytes: Uint8Array) => {
+	const sharp = await loadSharp();
+	const {data, info} = await sharp(bytes)
+		.ensureAlpha()
+		.raw()
+		.toBuffer({resolveWithObject: true});
+	return {width: info.width, height: info.height, data: new Uint8Array(data)};
 };
 
 // Straight alpha RGBA to WebP. `none`, `balanced` and `small` are lossless

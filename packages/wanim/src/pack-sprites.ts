@@ -25,9 +25,9 @@ const shelves = ({
 		const size = sizes[index] as Size;
 		let row = rows.find((r) => r.x + size.width + padding <= pageWidth);
 		if (!row) {
-			const last = rows[rows.length - 1];
+			const above = rows[rows.length - 1];
 			row = {
-				y: last ? last.y + last.height + padding : padding,
+				y: above ? above.y + above.height + padding : padding,
 				height: size.height,
 				x: padding,
 			};
@@ -66,12 +66,12 @@ export const packSprites = ({
 			const sizeB = sizes[b] as Size;
 			return sizeB.height - sizeA.height || sizeB.width - sizeA.width || a - b;
 		});
-	const range = (from: number, to: number) =>
-		Array.from({length: to - from}, (_, i) => from + i);
-	const fits = (from: number, to: number) =>
+	const range = (first: number, end: number) =>
+		Array.from({length: end - first}, (_, i) => first + i);
+	const fits = (first: number, end: number) =>
 		shelves({
 			sizes,
-			order: byHeight(range(from, to)),
+			order: byHeight(range(first, end)),
 			pageWidth: pageSize,
 			padding,
 		}).height <= pageSize;

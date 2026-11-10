@@ -1,0 +1,72 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-read-wanim-as-set.png
+title: readWanimAsSet()
+crumb: '@remotion/wanim'
+---
+
+# readWanimAsSet()<AvailableFrom v="4.0.542" />
+
+Reads the pictures and draws of a `.wanim` file of any version, in the shape that [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations) takes. Together they turn an older file into a file of version 3 without rendering it again, which is what [`npx remotion wanim convert`](/docs/cli/wanim#convert) does.
+
+```ts twoslash title="convert.ts"
+import {readFileSync, writeFileSync} from 'node:fs';
+import {
+  decodeWebp,
+  packWanimAnimations,
+  readWanimAsSet,
+  rekeyAnimationSet,
+} from '@remotion/wanim';
+
+const set = await readWanimAsSet({
+  file: new Uint8Array(readFileSync('banner.wanim')),
+  key: null,
+  decodeWebp,
+});
+
+const {file} = await packWanimAnimations({
+  // Without this, the file keeps its animations
+  set: rekeyAnimationSet(set, [
+    {key: 'transition_in', from: 0, to: 49, loop: false},
+    {key: 'idle', from: 50, to: 99, loop: true},
+  ]),
+  key: null,
+  compositionId: 'banner',
+  atlasSize: null,
+  compression: 'none',
+  atlasFormat: 'webp',
+  onProgress: null,
+});
+
+writeFileSync('banner-v3.wanim', file);
+```
+
+A file of version 1 or 2 is read as one animation with the key `main`.
+
+## Arguments
+
+An object with the following properties:
+
+### `file`
+
+The file as a `Uint8Array`.
+
+### `key`
+
+The custom key of the file, or `null` if it uses the official key.
+
+### `decodeWebp`
+
+A function that turns a WebP file into `width`, `height` and straight alpha RGBA `data`, for files with WebP atlases. Pass `decodeWebp` of this package, which needs the [`sharp`](https://www.npmjs.com/package/sharp) package, or `null` if the file is known to hold PNG atlases.
+
+## Return value
+
+A promise of the `set` argument of [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations#set).
+
+## `rekeyAnimationSet()`
+
+Takes a set with one animation and a list of ranges, each with a `key`, the first frame `from`, the last frame `to` and `loop`, and returns a set with one animation per range. Ranges may overlap. Passing `null` returns the set as it is.
+
+## See also
+
+- [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations)
+- [`openWanim()`](/docs/wanim/open-wanim)

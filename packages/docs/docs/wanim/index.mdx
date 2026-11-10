@@ -7,7 +7,7 @@ crumb: 'API'
 
 # @remotion/wanim<AvailableFrom v="4.0.542" />
 
-Exports a composition as a `.wanim` file: A single encrypted binary with texture atlases and the coordinates of each frame, which native apps can play on the GPU.
+Exports a composition as a `.wanim` file: A single encrypted binary with texture atlases and what to draw in each frame, which native apps can play on the GPU. One file can hold several animations that share their pictures.
 
 Frames are trimmed to their visible pixels, and repeated or moved pictures are stored once.
 
@@ -27,11 +27,27 @@ Render a composition without a background to keep it transparent.
 
 ## Formats
 
-- Frames, the default: One picture per frame. Opens in every `.wanim` player.
-- Layers, with `--layers`: A `.wanim` file of version 2. The page is split into parts, and a part that only moves, turns, scales or fades is stored once. Needs a player with version 2 support.
+- Frames, the default: One picture per frame.
+- Layers, with `--layers`: The page is split into parts, and a part that only moves, turns, scales or fades is stored once.
 - SVGA, with an output name ending in `.svga`: The same layers in the open [SVGA](https://github.com/svga/SVGA-Format) format, without encryption.
 
 Parts with effects that cannot be split, like a filter over a group, are stored as pictures, so every composition can be exported.
+
+## Several animations in one file
+
+A file can hold several animations, for example how a badge comes in, how it idles and how it leaves. Each has a key, and the app plays it by that key. The animations share their pictures: What 2 of them show is stored once, in the file and on the GPU.
+
+```bash
+npx remotion wanim render src/index.ts badge out/badge.wanim --animations="transition_in=0-29,idle=30-89:loop,transition_out=90-119"
+```
+
+Each animation is a range of frames of the composition. `:loop` marks one that repeats. In the Studio, the same text goes into the Animations field of the Picture section.
+
+## File versions
+
+`.wanim` files are written as version 3, which holds animations with keys, stores every different draw and frame once, compresses its tables, and stores pictures as WebP if the [`sharp`](https://www.npmjs.com/package/sharp) package is installed. It needs a player with version 3 support.
+
+For a player that is older, `--wanim-version=1` writes frames and `--wanim-version=2 --layers` writes layers, both with one animation. [`npx remotion wanim convert`](/docs/cli/wanim#convert) turns such a file into version 3 without rendering it again.
 
 ## Frame rate and image rate
 

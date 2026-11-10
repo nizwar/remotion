@@ -9,6 +9,7 @@ import {openWanim, readWanimHeader} from '../open-wanim';
 import type {WanimAnimationSet} from '../pack-animations';
 import {packWanimAnimations} from '../pack-animations';
 import {packSprites} from '../pack-sprites';
+import {sampleWanimAnimations} from '../sample-frames';
 
 const fixture = (name: string) =>
 	new Uint8Array(
@@ -138,11 +139,13 @@ test('invalid animations are rejected', async () => {
 		...set,
 		animations: keys.map((key) => ({...set.animations[0]!, key})),
 	});
-	expect(pack(withKeys('a', 'a'))).rejects.toThrow('used twice');
-	expect(pack(withKeys('has space'))).rejects.toThrow('animation key');
-	expect(pack(withKeys(''))).rejects.toThrow('animation key');
-	expect(pack({...set, animations: []})).rejects.toThrow('without animations');
-	expect(
+	await expect(pack(withKeys('a', 'a'))).rejects.toThrow('used twice');
+	await expect(pack(withKeys('has space'))).rejects.toThrow('animation key');
+	await expect(pack(withKeys(''))).rejects.toThrow('animation key');
+	await expect(pack({...set, animations: []})).rejects.toThrow(
+		'without animations',
+	);
+	await expect(
 		pack({...set, animations: [{key: 'a', loop: false, frames: []}]}),
 	).rejects.toThrow('no frames');
 });
@@ -322,7 +325,7 @@ test('WebP atlases hold the same pixels as PNG atlases', async () => {
 	).toEqual(
 		original.bitmaps.map((b) => PNG.sync.read(Buffer.from(b.png)).data),
 	);
-	expect(
+	await expect(
 		packWanimAnimations({...options, atlasFormat: 'png', compression: 'lossy'}),
 	).rejects.toThrow('WebP');
 	const lossy = await packWanimAnimations({
@@ -331,4 +334,47 @@ test('WebP atlases hold the same pixels as PNG atlases', async () => {
 		compression: 'lossy',
 	});
 	expect(lossy.manifest.atlases.length).toBe(webp.manifest.atlases.length);
+});
+
+test('each animation is sampled on its own', () => {
+	const sampled = sampleWanimAnimations({
+		firstFrame: 0,
+		lastFrame: 89,
+		fps: 30,
+		frameRate: 15,
+		imageRate: null,
+		animations: [
+			{key: 'in', from: 0, to: 29, loop: false},
+			{key: 'idle', from: 31, to: 60, loop: true},
+		],
+	});
+	expect(sampled.fps).toBe(15);
+	expect(sampled.frames.length).toBe(30);
+	expect(sampled.frames.slice(0, 3)).toEqual([0, 2, 4]);
+	// Starts on its own first frame, not on the grid of the one before
+	expect(sampled.frames.slice(15, 18)).toEqual([31, 33, 35]);
+	expect(sampled.animations).toEqual([
+		{key: 'in', from: 0, to: 14, loop: false},
+		{key: 'idle', from: 15, to: 29, loop: true},
+	]);
+	expect(() =>
+		sampleWanimAnimations({
+			firstFrame: 10,
+			lastFrame: 20,
+			fps: 30,
+			frameRate: null,
+			imageRate: null,
+			animations: [{key: 'a', from: 0, to: 12, loop: false}],
+		}),
+	).toThrow('spans');
+	expect(
+		sampleWanimAnimations({
+			firstFrame: 0,
+			lastFrame: 9,
+			fps: 30,
+			frameRate: null,
+			imageRate: null,
+			animations: null,
+		}).animations,
+	).toBe(null);
 });

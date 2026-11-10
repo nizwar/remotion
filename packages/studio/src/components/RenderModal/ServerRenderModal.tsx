@@ -441,6 +441,19 @@ const RenderModal: React.FC<
 				: savedWanim?.imageRate) ?? null,
 	);
 
+	const [wanimAnimations, setWanimAnimations] = useState<string>(
+		() =>
+			(retrySettings?.wanim
+				? retrySettings.wanim.animations
+				: savedWanim?.animations) ?? '',
+	);
+	const [wanimLegacy, setWanimLegacy] = useState<boolean>(
+		() =>
+			(retrySettings?.wanim
+				? retrySettings.wanim.legacy
+				: savedWanim?.legacy) ?? false,
+	);
+
 	useEffect(() => {
 		saveWanimSettings(resolvedComposition.id, {
 			size: wanimSize,
@@ -448,13 +461,17 @@ const RenderModal: React.FC<
 			format: wanimFormat,
 			frameRate: wanimFrameRate,
 			imageRate: wanimImageRate,
+			animations: wanimAnimations,
+			legacy: wanimLegacy,
 		});
 	}, [
 		resolvedComposition.id,
+		wanimAnimations,
 		wanimCompression,
 		wanimFormat,
 		wanimFrameRate,
 		wanimImageRate,
+		wanimLegacy,
 		wanimSize,
 	]);
 	const [logLevel, setLogLevel] = useState(() => initialLogLevel);
@@ -1429,6 +1446,8 @@ const RenderModal: React.FC<
 				format: wanimFormat,
 				frameRate: wanimFrameRate,
 				imageRate: wanimImageRate,
+				animations: wanimAnimations,
+				legacy: wanimLegacy,
 			},
 			remotionVersion: window.remotion_version,
 			locationHref: window.location.href,
@@ -1502,7 +1521,9 @@ const RenderModal: React.FC<
 	}, [
 		wanimFormat,
 		wanimFrameRate,
+		wanimAnimations,
 		wanimImageRate,
+		wanimLegacy,
 		audioBitrate,
 		audioCodec,
 		beepOnFinish,
@@ -1592,6 +1613,8 @@ const RenderModal: React.FC<
 		} else if (renderMode === 'wanim') {
 			onClickSequence({
 				format: wanimFormat,
+				animations: wanimAnimations,
+				legacy: wanimLegacy,
 				frameRate: wanimFrameRate,
 				imageRate: wanimImageRate,
 				fps: resolvedComposition.fps,
@@ -1616,7 +1639,9 @@ const RenderModal: React.FC<
 		wanimCompression,
 		wanimFormat,
 		wanimFrameRate,
+		wanimAnimations,
 		wanimImageRate,
+		wanimLegacy,
 	]);
 
 	useEffect(() => {
@@ -1857,6 +1882,10 @@ const RenderModal: React.FC<
 							setWanimFrameRate={setWanimFrameRate}
 							wanimImageRate={wanimImageRate}
 							setWanimImageRate={setWanimImageRate}
+							wanimAnimations={wanimAnimations}
+							setWanimAnimations={setWanimAnimations}
+							wanimLegacy={wanimLegacy}
+							setWanimLegacy={setWanimLegacy}
 							compositionFps={resolvedComposition.fps}
 						/>
 					) : tab === 'audio' ? (

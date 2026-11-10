@@ -18,6 +18,18 @@ export const TableOfContents: React.FC = () => {
 					</strong>
 					<div>Pack layers into a .wanim file of version 2</div>
 				</TOCItem>
+				<TOCItem link="/docs/wanim/pack-wanim-animations">
+					<strong>
+						<code>packWanimAnimations()</code>
+					</strong>
+					<div>Pack animations with keys into a .wanim file of version 3</div>
+				</TOCItem>
+				<TOCItem link="/docs/wanim/read-wanim-as-set">
+					<strong>
+						<code>readWanimAsSet()</code>
+					</strong>
+					<div>Read a .wanim file of any version to pack it again</div>
+				</TOCItem>
 				<TOCItem link="/docs/wanim/pack-svga">
 					<strong>
 						<code>packSvga()</code>

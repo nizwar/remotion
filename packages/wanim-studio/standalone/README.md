@@ -27,12 +27,26 @@ npm run export LoadingOrb -- --scale=0.5 --frame-rate=15 --compress=balanced
 Formats:
 
 ```bash
-npm run export LoadingOrb -- --layers                       # version 2: moving parts are stored once
+npm run export LoadingOrb -- --layers                       # moving parts are stored once
 npm run export LoadingOrb out/LoadingOrb.svga               # SVGA, not encrypted
 npm run export LoadingOrb -- --layers --frame-rate=24 --image-rate=12
 ```
 
-`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth. Version 2 files need players with version 2 support.
+`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth.
+
+Several animations in one file, which the app plays by key and which share their pictures:
+
+```bash
+npm run export Badge -- --layers --animations="transition_in=0-29,idle=30-89:loop,transition_out=90-119"
+```
+
+Each entry is a key and a range of frames of the composition, `:loop` marks one that repeats.
+
+Files are version 3 and need players with version 3 support. For older players, add `--wanim-version=1`, or `--wanim-version=2` together with `--layers`. To turn an older file into version 3 without rendering it again:
+
+```bash
+npx remotion wanim convert old.wanim new.wanim
+```
 
 To export from the Studio, click Render and choose the Wanim tab.
 

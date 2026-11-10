@@ -17,12 +17,13 @@ Add `--compress=balanced` or `--compress=small` for a smaller file.
 Formats:
 
 ```bash
-bun run export LoadingOrb --layers               # version 2: moving parts are stored once
+bun run export LoadingOrb --layers               # moving parts are stored once
 bun run export LoadingOrb out/LoadingOrb.svga    # SVGA, not encrypted
 bun run export LoadingOrb --layers --frame-rate=24 --image-rate=12
+bun run export Badge --animations="transition_in=0-29,idle=30-89:loop"   # several animations, played by key
 ```
 
-`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth.
+`--frame-rate` keeps the duration with fewer frames. `--image-rate` lets changing parts get a new picture less often, while moves stay smooth. Files are version 3, `--wanim-version=1` or `--wanim-version=2 --layers` write a file for older players.
 
 You can also export from the Studio: Click Render and choose the Wanim tab.
 

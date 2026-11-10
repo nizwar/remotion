@@ -6,7 +6,7 @@ crumb: '@remotion/wanim'
 
 # packWanim()<AvailableFrom v="4.0.542" />
 
-Packs PNG frames into a `.wanim` file. Use [`npx remotion wanim render`](/docs/cli/wanim) unless you already have frames, for example from [`renderFrames()`](/docs/renderer/render-frames).
+Packs PNG frames into a `.wanim` file of version 1, for players that cannot read version 3. For new files, pass the frames through [`readFramesAsAnimation()`](/docs/wanim/pack-wanim-animations#from-rendered-frames) to [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations). Use [`npx remotion wanim render`](/docs/cli/wanim) unless you already have frames, for example from [`renderFrames()`](/docs/renderer/render-frames).
 
 ```ts twoslash title="pack.ts"
 import {writeFileSync} from 'node:fs';

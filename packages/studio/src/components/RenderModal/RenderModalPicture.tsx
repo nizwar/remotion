@@ -39,6 +39,10 @@ export const RenderModalPicture: React.FC<{
 	readonly setWanimFrameRate: (value: number | null) => void;
 	readonly wanimImageRate: number | null;
 	readonly setWanimImageRate: (value: number | null) => void;
+	readonly wanimAnimations: string;
+	readonly setWanimAnimations: (value: string) => void;
+	readonly wanimLegacy: boolean;
+	readonly setWanimLegacy: (value: boolean) => void;
 	readonly compositionFps: number;
 }> = ({
 	renderMode,
@@ -62,6 +66,10 @@ export const RenderModalPicture: React.FC<{
 	setWanimFrameRate,
 	wanimImageRate,
 	setWanimImageRate,
+	wanimAnimations,
+	setWanimAnimations,
+	wanimLegacy,
+	setWanimLegacy,
 	compositionFps,
 }) => {
 	return (
@@ -106,6 +114,10 @@ export const RenderModalPicture: React.FC<{
 					setFrameRate={setWanimFrameRate}
 					imageRate={wanimImageRate}
 					setImageRate={setWanimImageRate}
+					animations={wanimAnimations}
+					setAnimations={setWanimAnimations}
+					legacy={wanimLegacy}
+					setLegacy={setWanimLegacy}
 					compositionWidth={compositionWidth}
 					compositionHeight={compositionHeight}
 					compositionFps={compositionFps}

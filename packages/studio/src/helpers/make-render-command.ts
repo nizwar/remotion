@@ -251,7 +251,10 @@ type ReadOnlyStudioRenderCommandInput = RenderMediaCommandOptions &
 		envVariables: Record<string, string>;
 		inputProps: Record<string, unknown>;
 		// Only read for `renderMode: 'wanim'`
-		wanim: Pick<WanimOptions, 'format' | 'frameRate' | 'imageRate'> | null;
+		wanim: Pick<
+			WanimOptions,
+			'format' | 'frameRate' | 'imageRate' | 'animations' | 'legacy'
+		> | null;
 	};
 
 export const makeReadOnlyStudioRenderCommand = ({
@@ -428,6 +431,17 @@ export const makeReadOnlyStudioRenderCommand = ({
 			addBooleanFlag(flags, 'layers', wanim?.format === 'layers');
 			addFlagWithValue(flags, 'frame-rate', wanim?.frameRate);
 			addFlagWithValue(flags, 'image-rate', wanim?.imageRate);
+			if (wanim?.format !== 'svga') {
+				if (wanim?.legacy) {
+					addFlagWithValue(
+						flags,
+						'wanim-version',
+						wanim.format === 'layers' ? 2 : 1,
+					);
+				} else if (wanim?.animations) {
+					addFlagWithValue(flags, 'animations', wanim.animations);
+				}
+			}
 		} else if (isSequenceRender) {
 			addBooleanFlag(flags, options.imageSequenceOption.cliFlag, true);
 			if (sequenceImageFormat !== 'jpeg') {

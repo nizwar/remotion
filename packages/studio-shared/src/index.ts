@@ -486,3 +486,6 @@ export {isUrl, normalizeHttpUrl} from './url';
 
 export {emptyCompositionComponent} from './empty-composition-component';
 export {assetCompositionComponent} from './asset-composition-component';
+
+export {parseWanimAnimations} from './wanim-animations';
+export type {WanimAnimationRangeInput} from './wanim-animations';

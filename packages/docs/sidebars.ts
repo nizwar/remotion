@@ -1103,6 +1103,8 @@ const sidebars: SidebarsConfig = {
 			items: [
 				'wanim/pack-wanim',
 				'wanim/pack-wanim-layers',
+				'wanim/pack-wanim-animations',
+				'wanim/read-wanim-as-set',
 				'wanim/pack-svga',
 				'wanim/open-wanim',
 				'wanim/sample-wanim-frames',

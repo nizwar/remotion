@@ -1,6 +1,7 @@
 import type {WanimFormat, WanimOptions} from '@remotion/studio-shared';
+import {parseWanimAnimations} from '@remotion/studio-shared';
 import React, {useCallback, useMemo, useState} from 'react';
-import {LIGHT_TEXT} from '../../helpers/colors';
+import {FAIL_COLOR, LIGHT_TEXT} from '../../helpers/colors';
 import {Checkmark} from '../../icons/Checkmark';
 import {Checkbox} from '../Checkbox';
 import type {ComboboxValue} from '../NewComposition/ComboBox';
@@ -28,6 +29,8 @@ type SavedWanimSettings = {
 	format?: WanimFormat;
 	frameRate?: number | null;
 	imageRate?: number | null;
+	animations?: string;
+	legacy?: boolean;
 };
 
 // Frame rates to choose from, if they are lower than the composition's
@@ -143,6 +146,10 @@ const hintStyle: React.CSSProperties = {
 	marginBottom: 14,
 };
 
+const errorHintStyle: React.CSSProperties = {...hintStyle, color: FAIL_COLOR};
+
+const animationsInputStyle: React.CSSProperties = {width: 260};
+
 const NumberField: React.FC<{
 	readonly name: string;
 	readonly value: number;
@@ -199,6 +206,10 @@ export const WanimSizeSetting: React.FC<{
 	readonly setFrameRate: (value: number | null) => void;
 	readonly imageRate: number | null;
 	readonly setImageRate: (value: number | null) => void;
+	readonly animations: string;
+	readonly setAnimations: (value: string) => void;
+	readonly legacy: boolean;
+	readonly setLegacy: (value: boolean) => void;
 	readonly compositionWidth: number;
 	readonly compositionHeight: number;
 	readonly compositionFps: number;
@@ -213,16 +224,61 @@ export const WanimSizeSetting: React.FC<{
 	setFrameRate,
 	imageRate,
 	setImageRate,
+	animations,
+	setAnimations,
+	legacy,
+	setLegacy,
 	compositionWidth,
 	compositionHeight,
 	compositionFps,
 }) => {
 	const {mode} = size;
+	// Only version 3 files hold several animations and lossy pictures
+	const isVersion3 = format !== 'svga' && !legacy;
+
+	const animationsHint = useMemo((): {text: string; error: boolean} => {
+		try {
+			const parsed = parseWanimAnimations(animations);
+			if (parsed === null) {
+				return {
+					text: 'One animation of all frames. To get several that the app plays by key: transition_in=0-29,idle=30-89:loop',
+					error: false,
+				};
+			}
+
+			return {
+				text: parsed
+					.map(
+						(a) =>
+							`${a.key}: frames ${a.from}-${a.to}${a.loop ? ', loops' : ''}`,
+					)
+					.join(' · '),
+				error: false,
+			};
+		} catch (err) {
+			return {text: (err as Error).message, error: true};
+		}
+	}, [animations]);
+
+	const onAnimations: React.ChangeEventHandler<HTMLInputElement> = useCallback(
+		(event) => setAnimations(event.target.value),
+		[setAnimations],
+	);
+
+	const onLegacy: React.ChangeEventHandler<HTMLInputElement> = useCallback(
+		(event) => {
+			setLegacy(event.target.checked);
+			if (event.target.checked && compression === 'lossy') {
+				setCompression('balanced');
+			}
+		},
+		[compression, setCompression, setLegacy],
+	);
 
 	const formatItems = useMemo((): ComboboxValue[] => {
 		const formats: {id: WanimFormat; label: string}[] = [
 			{id: 'frames', label: 'Frames (.wanim)'},
-			{id: 'layers', label: 'Layers (.wanim v2)'},
+			{id: 'layers', label: 'Layers (.wanim)'},
 			{id: 'svga', label: 'SVGA (.svga)'},
 		];
 		return formats.map(
@@ -235,16 +291,21 @@ export const WanimSizeSetting: React.FC<{
 				keyHint: null,
 				quickSwitcherLabel: null,
 				subMenu: null,
-				onClick: () => setFormat(item.id),
+				onClick: () => {
+					setFormat(item.id);
+					if (item.id === 'svga' && compression === 'lossy') {
+						setCompression('balanced');
+					}
+				},
 			}),
 		);
-	}, [format, setFormat]);
+	}, [compression, format, setCompression, setFormat]);
 
 	const formatHint =
 		format === 'frames'
-			? 'One picture per frame. Opens in every Wanim player.'
+			? 'One picture per frame.'
 			: format === 'layers'
-				? 'Moving parts are stored once and moved by the player. Needs a player with version 2 support.'
+				? 'Moving parts are stored once and moved by the player.'
 				: 'Layers in the open SVGA format. Not encrypted, plays in any SVGA player.';
 
 	// The playback rate, which is the composition's or lower
@@ -447,13 +508,14 @@ export const WanimSizeSetting: React.FC<{
 			{key: 'none', label: 'Off'},
 			{key: 'balanced', label: 'Balanced'},
 			{key: 'small', label: 'Small'},
+			...(isVersion3 ? [{key: 'lossy' as const, label: 'Lossy'}] : []),
 		];
 		return levels.map((level) => ({
 			...level,
 			selected: compression === level.key,
 			onClick: () => setCompression(level.key),
 		}));
-	}, [compression, setCompression]);
+	}, [compression, isVersion3, setCompression]);
 
 	const fitHint =
 		size.fit === 'contain'
@@ -467,7 +529,9 @@ export const WanimSizeSetting: React.FC<{
 			? 'Lossless'
 			: compression === 'balanced'
 				? 'Fewer color shades, barely visible'
-				: '256 colors per atlas, gradients may show bands';
+				: compression === 'small'
+					? '256 colors per atlas, gradients may show bands'
+					: 'Like a photo at high quality. Smallest for painted pictures, larger for flat colors';
 
 	return (
 		<>
@@ -482,6 +546,47 @@ export const WanimSizeSetting: React.FC<{
 				</div>
 			</div>
 			<div style={hintStyle}>{formatHint}</div>
+			{format === 'svga' ? null : (
+				<>
+					<div style={optionRow}>
+						<div style={label}>For older players</div>
+						<div style={rightRow}>
+							<Checkbox
+								checked={legacy}
+								onChange={onLegacy}
+								name="wanim-legacy"
+							/>
+						</div>
+					</div>
+					<div style={hintStyle}>
+						{legacy
+							? `Version ${format === 'layers' ? 2 : 1}: One animation, larger file`
+							: 'Version 3: Needs a player with version 3 support'}
+					</div>
+				</>
+			)}
+			{isVersion3 ? (
+				<>
+					<div style={optionRow}>
+						<div style={label}>Animations</div>
+						<div style={rightRow}>
+							<RemotionInput
+								aria-label="Animations"
+								type="text"
+								status={animationsHint.error ? 'error' : 'ok'}
+								rightAlign={false}
+								style={animationsInputStyle}
+								placeholder="transition_in=0-29,idle=30-89:loop"
+								value={animations}
+								onChange={onAnimations}
+							/>
+						</div>
+					</div>
+					<div style={animationsHint.error ? errorHintStyle : hintStyle}>
+						{animationsHint.text}
+					</div>
+				</>
+			) : null}
 			<div style={optionRow}>
 				<div style={label}>Size</div>
 				<div style={rightRow}>

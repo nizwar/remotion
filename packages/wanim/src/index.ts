@@ -38,7 +38,8 @@ export type {
 export {packSvga} from './pack-svga';
 export {packWanim} from './pack-wanim';
 export type {PackWanimOptions, PackWanimResult} from './pack-wanim';
-export {sampleWanimFrames} from './sample-frames';
+export {sampleWanimAnimations, sampleWanimFrames} from './sample-frames';
+export {canUseWebp, decodeWebp} from './webp';
 export type {WanimFrameSampling} from './sample-frames';
 
 import {invertMatrix, multiplyMatrix, planLayers} from './plan-layers';

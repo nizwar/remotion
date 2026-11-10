@@ -301,15 +301,15 @@ export const packWanimAnimations = async ({
 					...multiplyMatrix(draw.matrix, fromSprite).map((v) => Math.fround(v)),
 					Math.fround(Math.min(1, draw.alpha)),
 				];
-				const id = values.join(',');
-				let index = drawOf.get(id);
-				if (index === undefined) {
-					index = drawValues.length;
-					drawOf.set(id, index);
+				const drawId = values.join(',');
+				let drawIndex = drawOf.get(drawId);
+				if (drawIndex === undefined) {
+					drawIndex = drawValues.length;
+					drawOf.set(drawId, drawIndex);
 					drawValues.push(values);
 				}
 
-				return index;
+				return drawIndex;
 			});
 			const id = list.join(',');
 			let index = listOf.get(id);

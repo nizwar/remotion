@@ -6,7 +6,7 @@ crumb: '@remotion/wanim'
 
 # packWanimLayers()<AvailableFrom v="4.0.542" />
 
-Packs bitmaps and the matrices to draw them with into a `.wanim` file of version 2. Use [`npx remotion wanim render --layers`](/docs/cli/wanim#--layers), which splits a composition into layers for you.
+Packs bitmaps and the matrices to draw them with into a `.wanim` file of version 2, for players that cannot read version 3. For new files, use [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations), or [`npx remotion wanim render --layers`](/docs/cli/wanim#--layers), which splits a composition into layers for you.
 
 ```ts twoslash title="pack-layers.ts"
 import {readFileSync, writeFileSync} from 'node:fs';

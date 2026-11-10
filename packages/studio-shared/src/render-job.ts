@@ -117,9 +117,15 @@ type RenderJobDynamicStatus =
 export type WanimFormat = 'frames' | 'layers' | 'svga';
 
 export type WanimOptions = {
-	// `frames`: .wanim with one picture per frame. `layers`: .wanim version 2,
+	// `frames`: .wanim with one picture per frame. `layers`: .wanim whose
 	// moving parts are drawn with a matrix. `svga`: An unencrypted .svga file.
 	format: WanimFormat;
+	// Several animations in one file, as `transition_in=0-29,idle=30-89:loop`.
+	// Empty for one animation of all frames. Missing in jobs of older versions.
+	animations?: string;
+	// Writes version 1 (frames) or 2 (layers) for players that cannot read
+	// version 3. Missing in jobs of older versions.
+	legacy?: boolean;
 	// Frames per second of the file, `null` for the frame rate of the composition
 	frameRate: number | null;
 	// How often a part may change its look, `null` for every frame
@@ -128,7 +134,8 @@ export type WanimOptions = {
 	width: number;
 	height: number;
 	fit: 'contain' | 'cover' | 'stretch';
-	compression: 'none' | 'balanced' | 'small';
+	// `lossy` is only for version 3 files
+	compression: 'none' | 'balanced' | 'small' | 'lossy';
 };
 
 type RenderJobDynamicFields =

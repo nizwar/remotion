@@ -23,7 +23,25 @@ Supports [`--props`](/docs/cli/render#--props), [`--scale`](/docs/cli/render#--s
 
 ### `--layers`
 
-Writes a version 2 file: Parts that move, turn, scale or fade are stored once and moved by the player, parts that change their look get a picture per look. Smaller and lighter on the GPU for most animations. Parts that change in every frame are stored like the default. Needs a player that supports version 2.
+Parts that move, turn, scale or fade are stored once and moved by the player, parts that change their look get a picture per look. Smaller and lighter on the GPU for most animations. Parts that change in every frame are stored like the default.
+
+### `--animations`
+
+Puts several animations into the file, which the app plays by key:
+
+```bash
+npx remotion wanim render src/index.ts badge --animations="transition_in=0-29,idle=30-89:loop,transition_out=90-119"
+```
+
+Each entry is a key, the first and the last frame of the composition, and `:loop` if the animation repeats. A key is 1 to 64 letters, digits, `_`, `.` or `-`. The animations share their pictures, and ranges may overlap. Without this flag, the file has one animation with the key `main`.
+
+### `--wanim-version`
+
+`3` (default), or `1` or `2` for players that cannot read version 3. Version 1 stores frames, version 2 needs `--layers`. Neither holds several animations or WebP atlases.
+
+### `--atlas-format`
+
+`webp` or `png`. WebP holds the same pixels in a smaller file and is the default if the [`sharp`](https://www.npmjs.com/package/sharp) package is installed. Version 3 only.
 
 ### `--frame-rate`
 
@@ -39,7 +57,7 @@ Read a custom key from a file.
 
 ### `--compress`
 
-Reduces the file size with some loss of color: `none` (default), `balanced` or `small`. The memory on the GPU stays the same.
+Reduces the file size with some loss of color: `none` (default), `balanced`, `small`, or `lossy`, which stores the colors like a photo of high quality and needs WebP atlases. `lossy` is the smallest for painted pictures and larger than the others for few flat colors. The memory on the GPU stays the same.
 
 ### `--atlas-size`
 
@@ -53,6 +71,17 @@ Prints a random custom key.
 npx remotion wanim keygen
 ```
 
+## `convert`
+
+Packs a file of any version again as version 3, without rendering: The file gets smaller and needs less memory on the GPU, and shows the same pixels unless `--compress` is passed.
+
+```bash
+npx remotion wanim convert banner.wanim banner-v3.wanim
+npx remotion wanim convert banner.wanim banner-v3.wanim --animations="transition_in=0-49,idle=50-99:loop"
+```
+
+With `--animations`, the frames of a file with one animation are split into animations. Here, the ranges count the frames of the file. Also takes `--compress`, `--atlas-format`, `--atlas-size`, `--overwrite` and `--key-file`.
+
 ## `inspect`
 
 Prints the manifest of a file. For a file with a custom key, this requires the key.
@@ -65,3 +94,4 @@ npx remotion wanim inspect out/my-comp.wanim
 
 - [`@remotion/wanim`](/docs/wanim)
 - [`packWanim()`](/docs/wanim/pack-wanim)
+- [`packWanimAnimations()`](/docs/wanim/pack-wanim-animations)

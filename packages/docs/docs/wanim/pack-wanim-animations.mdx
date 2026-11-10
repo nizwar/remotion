@@ -1,0 +1,158 @@
+---
+image: https://remotion.media/docs/generated/articles-docs-wanim-pack-wanim-animations.png
+title: packWanimAnimations()
+crumb: '@remotion/wanim'
+---
+
+# packWanimAnimations()<AvailableFrom v="4.0.542" />
+
+Packs one or more animations that draw from the same pictures into a `.wanim` file of version 3. An app plays each animation by its key. Use [`npx remotion wanim render --animations`](/docs/cli/wanim#--animations), which renders a composition and splits it into animations for you.
+
+```ts twoslash title="pack-animations.ts"
+import {readFileSync, writeFileSync} from 'node:fs';
+import {packWanimAnimations} from '@remotion/wanim';
+
+const {file} = await packWanimAnimations({
+  set: {
+    width: 200,
+    height: 200,
+    fps: 30,
+    bitmaps: [{width: 40, height: 40, png: new Uint8Array(readFileSync('ball.png'))}],
+    animations: [
+      {
+        key: 'transition_in',
+        loop: false,
+        frames: [
+          [{bitmap: 0, matrix: [1, 0, 0, 1, 0, 80], alpha: 0.5}],
+          [{bitmap: 0, matrix: [1, 0, 0, 1, 40, 80], alpha: 1}],
+        ],
+      },
+      {
+        key: 'idle',
+        loop: true,
+        frames: [
+          [{bitmap: 0, matrix: [1, 0, 0, 1, 40, 80], alpha: 1}],
+          [{bitmap: 0, matrix: [1, 0, 0, 1, 40, 76], alpha: 1}],
+        ],
+      },
+    ],
+  },
+  key: null,
+  compositionId: 'ball',
+  atlasSize: null,
+  compression: 'none',
+  atlasFormat: 'webp',
+  onProgress: null,
+});
+
+writeFileSync('out/ball.wanim', file);
+```
+
+Bitmaps with the same pixels are stored once, and so are draws and frames that are the same, also across animations.
+
+## Arguments
+
+An object with the following properties:
+
+### `set`
+
+An object with the following properties:
+
+#### `width`
+
+Width of the canvas in pixels.
+
+#### `height`
+
+Height of the canvas in pixels.
+
+#### `fps`
+
+The playback speed of all animations.
+
+#### `bitmaps`
+
+The pictures, each with a `width`, a `height` and a `png` with straight alpha of exactly that size.
+
+#### `animations`
+
+At least one animation, each with:
+
+- `key`: What the app plays it by. 1 to 64 letters, digits, `_`, `.` or `-`, and unique in the file.
+- `loop`: Whether the animation is meant to repeat. Players use it unless the app says otherwise.
+- `frames`: For each frame, what to draw from back to front: The index of a `bitmap`, a `matrix` `[a, b, c, d, tx, ty]` that maps a pixel of the bitmap to the canvas, and an `alpha` between `0` and `1`. Draws that are invisible or outside of the canvas are left out.
+
+### `key`
+
+`null` to use the official key, or a custom key, see [`generateWanimKey()`](/docs/wanim/generate-wanim-key).
+
+### `compositionId`
+
+A name to store in the file, or `null`.
+
+### `atlasSize`
+
+The maximum width and height of an atlas, up to `4096`. If `null`, it is `2048`, or `4096` for large bitmaps.
+
+### `compression`
+
+`none`, `balanced` or `small`, as in [`packWanim()`](/docs/wanim/pack-wanim#compression), or `lossy`, which stores the colors like a photo of high quality and keeps the transparency exact. `lossy` needs WebP atlases. It is the smallest for painted pictures, and larger than the others for pictures of few flat colors.
+
+### `atlasFormat`
+
+`png` or `webp`. WebP holds the same pixels in a smaller file and needs the [`sharp`](https://www.npmjs.com/package/sharp) package to be installed.
+
+### `onProgress`
+
+A function that is called with a number between `0` and `1`, or `null`.
+
+## Return value
+
+A promise of an object with the following properties:
+
+### `file`
+
+The `.wanim` file as a `Uint8Array`.
+
+### `manifest`
+
+The contents of the file. Read the draws with [`openWanim()`](/docs/wanim/open-wanim).
+
+## From rendered frames
+
+`readFramesAsAnimation()` turns PNG frames, for example from [`renderFrames()`](/docs/renderer/render-frames), into one trimmed picture per frame, and `splitFrames()` turns their frames into animations:
+
+```ts twoslash title="from-frames.ts"
+import {packWanimAnimations, readFramesAsAnimation, splitFrames} from '@remotion/wanim';
+
+const framePaths = ['frames/0.png', 'frames/1.png', 'frames/2.png', 'frames/3.png'];
+const {frames, ...animation} = await readFramesAsAnimation({
+  framePaths,
+  fps: 30,
+  canvas: null,
+  onProgress: null,
+});
+
+const {file} = await packWanimAnimations({
+  set: {
+    ...animation,
+    animations: splitFrames(frames, [
+      {key: 'transition_in', from: 0, to: 1, loop: false},
+      {key: 'idle', from: 2, to: 3, loop: true},
+    ]),
+  },
+  key: null,
+  compositionId: null,
+  atlasSize: null,
+  compression: 'none',
+  atlasFormat: 'png',
+  onProgress: null,
+});
+```
+
+`canvas` is as in [`packWanim()`](/docs/wanim/pack-wanim#canvas). Passing `null` to `splitFrames()` instead of ranges gives one animation with the key `main`.
+
+## See also
+
+- [`readWanimAsSet()`](/docs/wanim/read-wanim-as-set)
+- [`npx remotion wanim`](/docs/cli/wanim)

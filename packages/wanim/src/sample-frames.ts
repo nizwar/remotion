@@ -1,6 +1,8 @@
 // An animation keeps its duration at a lower frame rate: It shows fewer
 // frames, each for longer.
 
+import type {WanimAnimationRange} from './convert-wanim';
+
 const EPSILON = 1e-6;
 
 export type WanimFrameSampling = {
@@ -58,4 +60,72 @@ export const sampleWanimFrames = ({
 	}
 
 	return {fps: rate, frames, imageFrames};
+};
+
+// Samples each animation on its own, so that each starts on its first frame
+// and keeps its duration. The ranges that are returned count the frames of
+// the file, not those of the composition.
+export const sampleWanimAnimations = ({
+	firstFrame,
+	lastFrame,
+	fps,
+	frameRate,
+	imageRate,
+	animations,
+}: {
+	firstFrame: number;
+	lastFrame: number;
+	fps: number;
+	frameRate: number | null;
+	imageRate: number | null;
+	// Ranges of source frames. `null` for one animation of all frames.
+	animations: WanimAnimationRange[] | null;
+}): WanimFrameSampling & {animations: WanimAnimationRange[] | null} => {
+	if (animations === null) {
+		return {
+			...sampleWanimFrames({firstFrame, lastFrame, fps, frameRate, imageRate}),
+			animations: null,
+		};
+	}
+
+	if (animations.length === 0) {
+		throw new Error('At least one animation is needed');
+	}
+
+	const frames: number[] = [];
+	const imageFrames: number[] = [];
+	const ranges: WanimAnimationRange[] = [];
+	let rate = fps;
+	for (const {key, from, to, loop} of animations) {
+		if (
+			!Number.isInteger(from) ||
+			!Number.isInteger(to) ||
+			from < firstFrame ||
+			to < from ||
+			to > lastFrame
+		) {
+			throw new RangeError(
+				`The animation "${key}" spans the frames ${from}-${to}, but the frames ${firstFrame}-${lastFrame} are rendered`,
+			);
+		}
+
+		const sampled = sampleWanimFrames({
+			firstFrame: from,
+			lastFrame: to,
+			fps,
+			frameRate,
+			imageRate,
+		});
+		rate = sampled.fps;
+		ranges.push({
+			key,
+			from: frames.length,
+			to: frames.length + sampled.frames.length - 1,
+			loop,
+		});
+		frames.push(...sampled.frames);
+		imageFrames.push(...sampled.imageFrames);
+	}
+
+	return {fps: rate, frames, imageFrames, animations: ranges};
 };
