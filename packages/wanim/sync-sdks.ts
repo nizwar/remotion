@@ -34,7 +34,8 @@ for (const folder of fixtureFolders) {
 		if (
 			file.endsWith('.wanim') ||
 			file.startsWith('expected') ||
-			file.startsWith('layers-frame-')
+			file.startsWith('layers-frame-') ||
+			file.startsWith('animations-')
 		) {
 			cpSync(path.join('fixtures', file), path.join(target, file));
 		}

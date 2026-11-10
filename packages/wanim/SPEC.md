@@ -1,4 +1,4 @@
-# The `.wanim` format, versions 1 and 2
+# The `.wanim` format, versions 1, 2 and 3
 
 A `.wanim` file is an encrypted sprite animation: one or more texture atlases, plus a JSON manifest that says which part of which atlas to draw for each frame. Official players open every official file without any setup, and other tools cannot read anything but the header below.
 
@@ -9,7 +9,7 @@ All integers are little-endian. The files in [`fixtures/`](./fixtures) are the c
 | Offset | Size | Field                                                       |
 | ------ | ---- | ----------------------------------------------------------- |
 | 0      | 8    | Magic: `89 57 41 4E 49 4D 0D 0A`                            |
-| 8      | 2    | `u16` format version, currently `1`                         |
+| 8      | 2    | `u16` format version: `1`, `2` or `3`                       |
 | 10     | 2    | `u16` flags: Bit 0 is set if the file uses a custom key     |
 | 12     | 4    | `u32` `manifestLength`: Size of block 0, including its tag  |
 | 16     | 16   | `salt`                                                      |
@@ -17,7 +17,7 @@ All integers are little-endian. The files in [`fixtures/`](./fixtures) are the c
 | 40     | ...  | Block 0: Encrypted manifest                                 |
 | ...    | ...  | Data section, starts at `40 + manifestLength`: Atlas blocks |
 
-Reject a file if the magic differs or the version is not 1 or 2. Version 1 stores one sprite per frame. Version 2 stores a list of transformed sprites per frame ("layers"), see [Version 2](#version-2-layers). Header, encryption and atlases are the same in both.
+Reject a file if the magic differs or the version is not 1, 2 or 3. Version 1 stores one sprite per frame. Version 2 stores a list of transformed sprites per frame ("layers"), see [Version 2](#version-2-layers). Version 3 stores several animations that are played by key and share their sprites, see [Version 3](#version-3-animations). Header and encryption are the same in all of them.
 
 Block `i + 1` holds atlas `i`. Its position is `40 + manifestLength + atlases[i].offset`, and its size is `atlases[i].length`. Blocks are encrypted separately, so that a reader can read the manifest and then decrypt only the atlas it needs next.
 
@@ -177,3 +177,123 @@ Put all draws of a frame into one vertex buffer and issue one draw call per run 
 Playback is the same as in version 1. Skip the draw if the draws of the frame on screen are equal to those of the next frame, for example by comparing the byte ranges of the 2 frames once when loading.
 
 Memory: `gpuBytes` and the budget work the same. When streaming, prepare the atlases that the draws of the upcoming frames use. Atlases are in the order in which they are first used.
+
+## Version 3: Animations
+
+One file holds several animations, each with a key, for example `transition_in`, `idle` and `transition_out`. They draw from the same sprites, so a picture that 2 animations show is stored once, and the app plays an animation by its key. A file with one animation is the replacement of versions 1 and 2: A frame of version 1 is a frame with one draw.
+
+Compared to version 2:
+
+- Animations with keys, which share atlases, sprites, draws and frames.
+- Every different draw and every different frame is stored once. A layer that stands still costs 4 bytes per frame instead of 32, and a held frame costs 4 bytes.
+- The manifest and the scene are deflated before they are encrypted.
+- Atlases may be WebP, which is smaller than PNG at the same pixels.
+- Sprites touch each other on the atlas, and each atlas is as small as its sprites allow.
+- Atlases are grouped by the animations that use them, so a player can drop the textures of animations that it does not play.
+
+The fixtures are `sample-animations.wanim` (official key, PNG atlases), `sample-animations-custom-key.wanim` and `sample-animations-webp.wanim` (the same pixels in WebP atlases). `expected-animations.json` holds the manifest, the SHA-256 of each atlas, the SHA-256 of the pixels of each atlas (straight alpha RGBA, invisible pixels set to 0), the decoded scene, and per animation the SHA-256 of the pixels of `animations-<key>-<n>.png`, which show what a player draws for frame `n` of the animation `key` (computed by `fixtures/reference-renderer.ts`).
+
+### Blocks
+
+Block 0 and the scene are compressed: The decrypted block is a raw DEFLATE stream (RFC 1951, no zlib or gzip header). Atlases are not compressed again.
+
+- Block `0`: The deflated manifest. Stop inflating after 64 MB and reject the file.
+- Block `i + 1`: Atlas `i`, as in versions 1 and 2.
+- Block `atlases.length + 1`: The deflated scene, at `40 + manifestLength + scene.offset`. Its inflated size follows from the manifest, see below. Stop inflating at that size and reject the file if the stream holds more or less.
+
+### Manifest
+
+```json
+{
+	"version": 3,
+	"compositionId": "sample-animations",
+	"width": 64,
+	"height": 48,
+	"fps": 12,
+	"frameCount": 11,
+	"opaque": false,
+	"gpuBytes": 2132,
+	"atlases": [
+		{"offset": 0, "length": 189, "width": 22, "height": 22, "format": "png"},
+		{"offset": 189, "length": 130, "width": 7, "height": 7, "format": "png"}
+	],
+	"sprites": [[0, 0, 0, 14, 14], [0, 0, 14, 22, 8], [1, 0, 0, 7, 7]],
+	"animations": [
+		{"key": "transition_in", "frameCount": 4, "loop": false, "atlases": [0]},
+		{"key": "idle", "frameCount": 4, "loop": true, "atlases": [0, 1]},
+		{"key": "transition_out", "frameCount": 3, "loop": false, "atlases": [0]}
+	],
+	"scene": {"offset": 319, "length": 179, "draws": 11, "lists": 8, "items": 15}
+}
+```
+
+| Field                    | Meaning                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `frameCount`             | Frames of all animations together                                                                    |
+| `atlases[].format`       | `png`, or `webp`: Any WebP with straight alpha, lossless or lossy                                    |
+| `sprites`                | `[atlas, x, y, w, h]`, as in version 2                                                               |
+| `animations`             | At least one. Their frames follow each other in the scene, in this order                             |
+| `animations[].key`       | 1 to 64 characters of `A-Z a-z 0-9 _ . -`, unique in the file                                        |
+| `animations[].frameCount`| At least 1                                                                                           |
+| `animations[].loop`      | Whether the animation is meant to repeat. The default of a player, which the app can override        |
+| `animations[].atlases`   | The atlases that the draws of this animation use, ascending                                          |
+| `scene`                  | Position and size of the scene block, and the sizes of its tables                                    |
+
+`width`, `height`, `fps`, `opaque` and `gpuBytes` are as before and count for all animations. A file that was exported without keys has one animation with the key `main`.
+
+Reject a manifest whose `version` is not 3, whose keys are not unique or do not match the pattern, whose `frameCount` values are not at least 1 or do not add up to `frameCount`, or whose `animations[].atlases` name an atlas that does not exist.
+
+Each sprite has a transparent border of 1 pixel inside of its rectangle, as in version 2. Sprites are not apart: The borders of 2 neighbors are the 2 transparent pixels between their pictures. Sample with the exact rectangle.
+
+A WebP encoder may give invisible pixels any color. Premultiplying when decoding, which is required anyway, makes them transparent black.
+
+### Scene
+
+The inflated scene is binary, little-endian. With `D = scene.draws`, `L = scene.lists`, `I = scene.items` and `F = frameCount`, its size is `D * 32 + (L + 1) * 4 + I * 4 + F * 4`:
+
+| Part | Type                 | Meaning                                                                                  |
+| ---- | -------------------- | ---------------------------------------------------------------------------------------- |
+| 1    | `u32 sprite[D]`      | Index into `sprites`, for each draw                                                      |
+| 2    | `f32 a[D]`           | Then `b[D]`, `c[D]`, `d[D]`, `tx[D]`, `ty[D]` and `alpha[D]`: One array per field        |
+| 3    | `u32 listStart[L+1]` | The draws of list `l` are `items[listStart[l]]` to `items[listStart[l + 1] - 1]`         |
+| 4    | `u32 items[I]`       | Indices into the draws, from back to front                                               |
+| 5    | `u32 frames[F]`      | For each frame, an index into the lists. The frames of the first animation come first    |
+
+A draw is a sprite, a matrix and an alpha with the meaning of version 2. A list is what one frame draws, and may be empty. Frame `n` of an animation is `frames[start + n]`, where `start` is the sum of the `frameCount` of the animations before it.
+
+Draws and lists are unique: 2 frames show the same picture exactly if they have the same list index. That makes skipping a draw one integer comparison.
+
+Reject a scene if a sprite index is not below `sprites.length`, if `listStart[0]` is not 0, `listStart` decreases or `listStart[L]` is not `I`, if an item is not below `D`, or if a frame is not below `L`.
+
+Keep the scene as it is in memory: The arrays are small and can be read in place. Do not expand it to a list of draws per frame.
+
+### Rendering version 3
+
+A frame is drawn like a frame of version 2, with the draws of its list. Textures, blending, clipping to the canvas and the choice between nearest and linear filtering are the same.
+
+### Playing version 3
+
+A player plays one animation at a time:
+
+- `play(key)` starts the animation with that key at its first frame. Without a key, the first animation of the file is played. An unknown key is an error that the app gets to know, and the player keeps doing what it did.
+- The frame is `floor(elapsedSeconds * fps)`, counted from the start of the animation: With `loop`, modulo its `frameCount`. Without, the animation ends on its last frame, which stays on screen, and the app is told once that the animation with this key has finished.
+- `loop` of the manifest is the default. The app can override it for each `play`.
+- `play(key, then: nextKey)` plays `key` once, and then `nextKey` with its own `loop`. The first frame of `nextKey` replaces the last frame of `key` at the time that frame would end, so no frame is shown twice or left out, and the canvas is never empty in between. `transition_in` followed by `idle` is the usual case.
+- Switching animations does not reload anything that is already loaded, and a file opens with every animation ready to play if it fits the budget.
+
+Do not wake up for nothing:
+
+- Compare the list index of the next frame with the one on screen, and skip the draw if they are equal.
+- If the display refreshes more often than `fps`, do not run on every vsync: Ask for a callback at the frame rate of the file where the platform allows it (`preferredFrameRateRange` on iOS), or skip the work of a callback that cannot change the frame before anything else is done.
+- When the rest of a non-looping animation, or a whole looping animation, is one list, stop the vsync callback after drawing it. A looping animation of one still picture costs nothing while it is on screen.
+
+### Memory in version 3
+
+`gpuBytes` and the budget work as before, for the whole file. In addition, a player lets the app say which animations it still needs:
+
+- `release(keys)`, or `retain(keys)` for the opposite, drops the textures of the atlases that only the released animations use. `animations[].atlases` says which. An atlas that an animation in use needs is never dropped.
+- Playing an animation whose textures were dropped loads them again on a background thread, and keeps the frame on screen until they are ready. The app can load them ahead of time with `prepare(keys)`.
+
+An app that shows `transition_in` once and then `idle` for minutes releases `transition_in` and holds only the atlases of `idle`.
+
+When streaming, prepare the atlases of the animation that is playing and of the one that follows it.

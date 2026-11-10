@@ -345,9 +345,9 @@ test('version 1 files have no timeline', async () => {
 	});
 	// Changing the version breaks the authentication of every block
 	const copy = new Uint8Array(file);
-	copy[8] = 3;
+	copy[8] = 4;
 	expect(() => openWanim({file: copy, key: null})).toThrow(
-		'Unsupported .wanim version: 3',
+		'Unsupported .wanim version: 4',
 	);
 });
 

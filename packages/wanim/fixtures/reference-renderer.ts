@@ -1,8 +1,8 @@
-// Draws a frame of a version 2 file on the CPU, the way the spec describes it
+// Draws a frame of a version 2 or 3 file on the CPU, the way the spec describes it
 // for the GPU: premultiplied alpha, bilinear sampling inside of the sprite,
 // blending with ONE, ONE_MINUS_SRC_ALPHA. Returns straight alpha pixels.
 import {PNG} from 'pngjs';
-import type {WanimDraw, WanimLayersManifest} from '../src/format';
+import type {WanimDraw, WanimLayerSprite} from '../src/format';
 
 export const drawLayersFrame = ({
 	manifest,
@@ -10,8 +10,10 @@ export const drawLayersFrame = ({
 	atlases,
 	frame,
 }: {
-	manifest: WanimLayersManifest;
+	manifest: {width: number; height: number; sprites: WanimLayerSprite[]};
+	// The draws of each frame
 	timeline: WanimDraw[][];
+	// As PNG files
 	atlases: Uint8Array[];
 	frame: number;
 }) => {

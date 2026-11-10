@@ -2852,6 +2852,9 @@
         "eslint": "catalog:",
         "typescript": "catalog:",
       },
+      "optionalDependencies": {
+        "sharp": "catalog:",
+      },
     },
     "packages/wanim-studio": {
       "name": "wanim-studio",

@@ -1,0 +1,393 @@
+{
+	"customKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+	"manifest": {
+		"version": 3,
+		"compositionId": "sample-animations",
+		"width": 64,
+		"height": 48,
+		"fps": 12,
+		"frameCount": 11,
+		"opaque": false,
+		"gpuBytes": 2132,
+		"atlases": [
+			{
+				"offset": 0,
+				"length": 189,
+				"width": 22,
+				"height": 22,
+				"format": "png"
+			},
+			{
+				"offset": 189,
+				"length": 130,
+				"width": 7,
+				"height": 7,
+				"format": "png"
+			}
+		],
+		"sprites": [
+			[
+				0,
+				0,
+				0,
+				14,
+				14
+			],
+			[
+				0,
+				0,
+				14,
+				22,
+				8
+			],
+			[
+				1,
+				0,
+				0,
+				7,
+				7
+			]
+		],
+		"animations": [
+			{
+				"key": "transition_in",
+				"frameCount": 4,
+				"loop": false,
+				"atlases": [
+					0
+				]
+			},
+			{
+				"key": "idle",
+				"frameCount": 4,
+				"loop": true,
+				"atlases": [
+					0,
+					1
+				]
+			},
+			{
+				"key": "transition_out",
+				"frameCount": 3,
+				"loop": false,
+				"atlases": [
+					0
+				]
+			}
+		],
+		"scene": {
+			"offset": 319,
+			"length": 179,
+			"draws": 11,
+			"lists": 8,
+			"items": 15
+		}
+	},
+	"atlasSha256": [
+		"c7c52689194eec08bc4fe9c45d5fff1fd5b2262499e0634b050f15857903067a",
+		"638d1e97d3b79bafbbe10b33c9b29cef8f43136d0f8ccaba38c345a18a2218e8"
+	],
+	"atlasPixelsSha256": [
+		"dc35aaf5ab29646281eb8879cdaa5fe9a7c6f15d9c8931f0c45301ccecc63478",
+		"6f5dd85dbdee77d48065dcc04b4fedc9e5c49b65b0d5f251e58fa7102a9691df"
+	],
+	"webp": {
+		"manifest": {
+			"version": 3,
+			"compositionId": "sample-animations",
+			"width": 64,
+			"height": 48,
+			"fps": 12,
+			"frameCount": 11,
+			"opaque": false,
+			"gpuBytes": 2132,
+			"atlases": [
+				{
+					"offset": 0,
+					"length": 152,
+					"width": 22,
+					"height": 22,
+					"format": "webp"
+				},
+				{
+					"offset": 152,
+					"length": 62,
+					"width": 7,
+					"height": 7,
+					"format": "webp"
+				}
+			],
+			"sprites": [
+				[
+					0,
+					0,
+					0,
+					14,
+					14
+				],
+				[
+					0,
+					0,
+					14,
+					22,
+					8
+				],
+				[
+					1,
+					0,
+					0,
+					7,
+					7
+				]
+			],
+			"animations": [
+				{
+					"key": "transition_in",
+					"frameCount": 4,
+					"loop": false,
+					"atlases": [
+						0
+					]
+				},
+				{
+					"key": "idle",
+					"frameCount": 4,
+					"loop": true,
+					"atlases": [
+						0,
+						1
+					]
+				},
+				{
+					"key": "transition_out",
+					"frameCount": 3,
+					"loop": false,
+					"atlases": [
+						0
+					]
+				}
+			],
+			"scene": {
+				"offset": 214,
+				"length": 179,
+				"draws": 11,
+				"lists": 8,
+				"items": 15
+			}
+		},
+		"atlasSha256": [
+			"31586425b9df049a944ca108fbdd4e2e0ad780dac19be59cba5ae37dbb7ccd9c",
+			"0840d7c535f9a52fe5c6e1d233797586c83b4e6b4f0fce67f2283e6f8f8e1b08"
+		],
+		"atlasPixelsSha256": [
+			"dc35aaf5ab29646281eb8879cdaa5fe9a7c6f15d9c8931f0c45301ccecc63478",
+			"6f5dd85dbdee77d48065dcc04b4fedc9e5c49b65b0d5f251e58fa7102a9691df"
+		]
+	},
+	"scene": {
+		"draws": [
+			{
+				"sprite": 0,
+				"matrix": [
+					0.5,
+					0.8660253882408142,
+					-0.8660253882408142,
+					0.5,
+					10.562177658081055,
+					14.437822341918945
+				],
+				"alpha": 0.5
+			},
+			{
+				"sprite": 0,
+				"matrix": [
+					0.8660253882408142,
+					0.5,
+					-0.5,
+					0.8660253882408142,
+					17.437822341918945,
+					14.437822341918945
+				],
+				"alpha": 0.75
+			},
+			{
+				"sprite": 1,
+				"matrix": [
+					0.5,
+					0,
+					0,
+					1,
+					26.5,
+					35
+				],
+				"alpha": 0.5
+			},
+			{
+				"sprite": 0,
+				"matrix": [
+					1,
+					0,
+					0,
+					1,
+					25,
+					17
+				],
+				"alpha": 1
+			},
+			{
+				"sprite": 1,
+				"matrix": [
+					1,
+					0,
+					0,
+					1,
+					21,
+					35
+				],
+				"alpha": 1
+			},
+			{
+				"sprite": 2,
+				"matrix": [
+					1,
+					0,
+					0,
+					1,
+					43,
+					7
+				],
+				"alpha": 1
+			},
+			{
+				"sprite": 2,
+				"matrix": [
+					2,
+					0,
+					0,
+					2,
+					38,
+					2
+				],
+				"alpha": 0.5
+			},
+			{
+				"sprite": 2,
+				"matrix": [
+					1,
+					0,
+					0,
+					1,
+					11,
+					7
+				],
+				"alpha": 1
+			},
+			{
+				"sprite": 0,
+				"matrix": [
+					1,
+					0,
+					0,
+					1,
+					25,
+					17
+				],
+				"alpha": 0.5
+			},
+			{
+				"sprite": 1,
+				"matrix": [
+					1.5,
+					0,
+					0,
+					1,
+					15.5,
+					35
+				],
+				"alpha": 0.5
+			},
+			{
+				"sprite": 0,
+				"matrix": [
+					-1,
+					0,
+					0,
+					1,
+					71,
+					39
+				],
+				"alpha": 0.25
+			}
+		],
+		"lists": [
+			[],
+			[
+				0
+			],
+			[
+				1,
+				2
+			],
+			[
+				3,
+				4
+			],
+			[
+				3,
+				4,
+				5
+			],
+			[
+				3,
+				4,
+				6,
+				7
+			],
+			[
+				8,
+				9
+			],
+			[
+				10
+			]
+		],
+		"frames": {
+			"transition_in": [
+				0,
+				1,
+				2,
+				3
+			],
+			"idle": [
+				3,
+				4,
+				4,
+				5
+			],
+			"transition_out": [
+				3,
+				6,
+				7
+			]
+		}
+	},
+	"frameSha256": {
+		"transition_in": [
+			"f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+			"0489e5971b35e503a20d805fb03163068f61044c7fe9d065d8d5c88e67d77675",
+			"0fe41ace6426f1e0113b68e179f4b9a785b8246a3b1565938473ed6c5d70d186",
+			"aba9e71194bbfc028ebec2d5e768774aec40af7372575ac05b0869bc6caba7ed"
+		],
+		"idle": [
+			"aba9e71194bbfc028ebec2d5e768774aec40af7372575ac05b0869bc6caba7ed",
+			"ee1688b6e436e7d53f9d7307d0317043dd6918462889be1d46b658bc6524ec6f",
+			"ee1688b6e436e7d53f9d7307d0317043dd6918462889be1d46b658bc6524ec6f",
+			"28a483b137a8a54af0ec2d08adffbd4ab2b582081dbea5bde73e1bb067ccd924"
+		],
+		"transition_out": [
+			"aba9e71194bbfc028ebec2d5e768774aec40af7372575ac05b0869bc6caba7ed",
+			"44ca725aa32c380116bdfd61fa468ec72dd907e0823abd72acfa13c26a652278",
+			"1a0a232cb4b59fc6ec50a47a3c322560eb05510aed0b4f0d0719e0446c1ddea0"
+		]
+	}
+}

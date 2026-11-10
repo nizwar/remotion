@@ -28,6 +28,9 @@
 	"dependencies": {
 		"pngjs": "7.0.0"
 	},
+	"optionalDependencies": {
+		"sharp": "catalog:"
+	},
 	"devDependencies": {
 		"@remotion/eslint-config-internal": "workspace:*",
 		"@types/node": "catalog:",

@@ -1,7 +1,9 @@
 // Version 1 stores one sprite per frame, version 2 a list of transformed
-// sprites per frame (layers).
+// sprites per frame (layers). Version 3 stores several animations, each with
+// a key, that share their sprites and draws.
 export const WANIM_VERSION = 1;
 export const WANIM_LAYERS_VERSION = 2;
+export const WANIM_ANIMATIONS_VERSION = 3;
 export const WANIM_MAGIC = new Uint8Array([
 	0x89, 0x57, 0x41, 0x4e, 0x49, 0x4d, 0x0d, 0x0a,
 ]);
@@ -21,7 +23,8 @@ export type WanimAtlas = {
 	length: number;
 	width: number;
 	height: number;
-	format: 'png';
+	// `webp` only in version 3
+	format: 'png' | 'webp';
 };
 
 // [atlas, x, y, width, height, offsetX, offsetY]
@@ -89,3 +92,55 @@ export type WanimDraw = {
 
 // u32 sprite, then a, b, c, d, tx, ty and alpha as f32
 export const WANIM_DRAW_BYTES = 32;
+
+// The key of the only animation of a file that was exported without keys
+export const WANIM_DEFAULT_ANIMATION_KEY = 'main';
+export const WANIM_ANIMATION_KEY_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
+
+export type WanimAnimationEntry = {
+	key: string;
+	frameCount: number;
+	// Whether the animation is meant to repeat. Players use it unless the app
+	// says otherwise.
+	loop: boolean;
+	// The atlases that its draws use, ascending
+	atlases: number[];
+};
+
+export type WanimScene = {
+	// Relative to the start of the data section. The scene is the block after
+	// the last atlas.
+	offset: number;
+	length: number;
+	// Sizes of the tables in the scene
+	draws: number;
+	lists: number;
+	items: number;
+};
+
+export type WanimAnimationsManifest = {
+	version: 3;
+	compositionId: string | null;
+	width: number;
+	height: number;
+	fps: number;
+	// Frames of all animations
+	frameCount: number;
+	opaque: boolean;
+	gpuBytes: number;
+	atlases: WanimAtlas[];
+	sprites: WanimLayerSprite[];
+	// In the order of their frames in the scene
+	animations: WanimAnimationEntry[];
+	scene: WanimScene;
+};
+
+// The decoded scene of a version 3 file
+export type WanimSceneData = {
+	// Every different draw, once
+	draws: WanimDraw[];
+	// Every different frame, once: Indices into `draws`, from back to front
+	lists: number[][];
+	// Per animation, an index into `lists` for each frame
+	frames: Record<string, number[]>;
+};

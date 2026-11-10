@@ -2,7 +2,8 @@ import {deflateSync} from 'node:zlib';
 import type {PNG} from 'pngjs';
 import {concatBytes} from './crypto';
 
-export type WanimCompression = 'none' | 'balanced' | 'small';
+// `lossy` needs WebP atlases, which only version 3 files can hold
+export type WanimCompression = 'none' | 'balanced' | 'small' | 'lossy';
 
 const MAX_COLORS = 256;
 // Keeps 6 bits per color channel, which deflate packs far better than 8.
@@ -124,8 +125,10 @@ const chunk = (type: string, data: Uint8Array) => {
 	return out;
 };
 
-// Writes an indexed PNG with up to 256 colors
-export const encodePalettePng = (png: PNG): Uint8Array => {
+// Up to 256 colors, and the color of each pixel as PNG rows of 1 byte per pixel
+type Pixels = {data: Uint8Array; width: number; height: number};
+
+const indexPixels = (png: Pixels) => {
 	const {data, width, height} = png;
 	const histogram = new Map<number, Bucket>();
 	for (let i = 0; i < data.length; i += 4) {
@@ -191,6 +194,29 @@ export const encodePalettePng = (png: PNG): Uint8Array => {
 			rows[y * (width + 1) + 1 + x] = data[i + 3] === 0 ? 0 : findIndex(i);
 		}
 	}
+
+	return {palette, rows};
+};
+
+// Reduces the pixels to up to 256 colors in place, for formats that find the
+// palette by themselves
+export const quantize = (png: Pixels) => {
+	const {data, width, height} = png;
+	const {palette, rows} = indexPixels(png);
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			data.set(
+				palette[rows[y * (width + 1) + 1 + x] as number] as number[],
+				(y * width + x) * 4,
+			);
+		}
+	}
+};
+
+// Writes an indexed PNG with up to 256 colors
+export const encodePalettePng = (png: PNG): Uint8Array => {
+	const {width, height} = png;
+	const {palette, rows} = indexPixels(png);
 
 	const header = new Uint8Array(13);
 	const view = new DataView(header.buffer);

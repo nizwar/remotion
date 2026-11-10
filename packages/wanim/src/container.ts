@@ -1,4 +1,5 @@
 import {randomBytes} from 'node:crypto';
+import {deflateRawSync} from 'node:zlib';
 import {PNG} from 'pngjs';
 import type {WanimCompression} from './compress-atlas';
 import {encodePalettePng, posterize} from './compress-atlas';
@@ -22,21 +23,29 @@ import {WANIM_OFFICIAL_KEY} from './official-key';
 export const encryptedLength = (plaintextLength: number) =>
 	plaintextLength + WANIM_TAG_LENGTH;
 
+// Raw DEFLATE, without a zlib header
+export const deflate = (bytes: Uint8Array): Uint8Array =>
+	new Uint8Array(deflateRawSync(bytes, {level: 9}));
+
 // Header, then block 0 (the manifest), then the data blocks in order
 export const writeWanimFile = ({
 	version,
 	key,
 	manifest,
 	blocks,
+	deflateManifest,
 }: {
 	version: number;
 	// `null` for the official key
 	key: string | null;
 	manifest: object;
 	blocks: Uint8Array[];
+	// Version 3 deflates the manifest before it is encrypted
+	deflateManifest?: boolean;
 }): Uint8Array => {
 	const masterKey = parseWanimKey(key ?? WANIM_OFFICIAL_KEY);
-	const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+	const manifestJson = new TextEncoder().encode(JSON.stringify(manifest));
+	const manifestBytes = deflateManifest ? deflate(manifestJson) : manifestJson;
 	const salt = new Uint8Array(randomBytes(WANIM_SALT_LENGTH));
 	const noncePrefix = new Uint8Array(randomBytes(WANIM_NONCE_PREFIX_LENGTH));
 
@@ -69,6 +78,12 @@ export const encodePng = (
 	png: PNG,
 	compression: WanimCompression,
 ): Uint8Array => {
+	if (compression === 'lossy') {
+		throw new TypeError(
+			'The compression "lossy" needs WebP atlases, which only version 3 files have',
+		);
+	}
+
 	if (compression === 'balanced') {
 		posterize(png.data);
 	}
